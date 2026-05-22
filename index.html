@@ -10,27 +10,25 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
-  <!-- VISUAL UPDATE: Load the premium 'Inter' font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; }
-    /* VISUAL UPDATE: Custom purple accent color for the sliders */
     input[type=range] {
       accent-color: #4f46e5; 
       cursor: pointer;
     }
   </style>
 </head>
-<!-- VISUAL UPDATE: Changed background to a softer off-white (#f8fafc) and added more padding -->
 <body class="bg-[#f8fafc] min-h-screen py-10">
   <div id="root"></div>
 
   <script type="text/babel" data-presets="react,typescript">
-    const { useState, useMemo } = React;
+    // FEATURE UPDATE: We brought in 'useEffect' so our app can talk to the browser's memory
+    const { useState, useMemo, useEffect } = React;
 
     // =====================================================================
     // PART 1: THE MATH BRAIN
-    // (This part stayed exactly the same as our first commit!)
+    // (Still the same rock-solid Canadian FHSA math)
     // =====================================================================
     const LIFETIME_CAP = 40000;
     const ANNUAL_BASE_CAP = 8000;
@@ -114,16 +112,30 @@
     }
 
     // =====================================================================
-    // PART 2: THE VISUAL APP (Upgraded)
+    // PART 2: THE VISUAL APP 
     // =====================================================================
     function FHSACalculator() {
-      const [inputs, setInputs] = useState({
-        income: 85000,
-        annualContribution: 8000,
-        returnRate: 0.05,
-        years: 5,
-        reinvestRefund: true
+      
+      // FEATURE UPDATE 1: Local Storage Memory
+      // Instead of just giving default numbers, we ask the browser: "Has this person been here before?"
+      // If yes, we load their saved numbers. If no, we give them the standard starting point.
+      const [inputs, setInputs] = useState(() => {
+        const savedData = localStorage.getItem('fhsa_user_inputs_final');
+        if (savedData) {
+          try { 
+            return JSON.parse(savedData); 
+          } catch (e) { 
+            /* If the saved data is broken, just ignore it and move on */ 
+          }
+        }
+        return { income: 85000, annualContribution: 8000, returnRate: 0.05, years: 5, reinvestRefund: true };
       });
+
+      // FEATURE UPDATE 1: Local Storage Memory
+      // Every single time the user moves a slider, quietly save the new numbers in the background.
+      useEffect(() => {
+        localStorage.setItem('fhsa_user_inputs_final', JSON.stringify(inputs));
+      }, [inputs]);
 
       const projection = useMemo(() => calculateFHSASchedule(inputs), [inputs]);
 
@@ -134,7 +146,34 @@
         setInputs(prev => ({ ...prev, [field]: value }));
       };
 
-      // VISUAL UPDATE: Math for the new colorful Composition Bar Chart
+      // FEATURE UPDATE 2: CSV Data Exporter
+      // This helper function grabs all the math from our table, formats it with commas, 
+      // tricks the browser into thinking it's a file, and downloads it.
+      const handleDownloadCSV = () => {
+        const headers = ["Year", "Opening Balance", "Out-of-Pocket", "Refund Reinvested", "Return Earned", "Ending Balance"];
+        const rows = projection.schedule.map(row => [
+          row.year,
+          row.openingBalance.toFixed(2),
+          row.outOfPocket.toFixed(2),
+          inputs.reinvestRefund ? row.refundReinvested.toFixed(2) : 0,
+          row.returnEarned.toFixed(2),
+          row.endingBalance.toFixed(2)
+        ]);
+        
+        // Piece it together into a CSV (Comma Separated Values) format
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+        const encodedUri = encodeURI(csvContent);
+        
+        // Create an invisible link, click it automatically to trigger download, then delete it
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "FHSA_Projection.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      // Math for the Composition Bar percentages
       const totalReturns = projection.totalEndingBalance - projection.totalOutOfPocket - projection.totalRefundsReinvested;
       const outOfPocketPct = projection.totalEndingBalance > 0 ? (projection.totalOutOfPocket / projection.totalEndingBalance) * 100 : 0;
       const refundsPct = projection.totalEndingBalance > 0 ? (projection.totalRefundsReinvested / projection.totalEndingBalance) * 100 : 0;
@@ -151,16 +190,14 @@
             </p>
           </div>
 
-          {/* VISUAL UPDATE: Cards are now rounder (rounded-2xl) with a softer drop shadow */}
+          {/* Control Panel */}
           <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
             <div className="space-y-8">
               <div>
-                {/* VISUAL UPDATE: Added htmlFor for screen readers, and a badge-style number display */}
                 <label htmlFor="income-slider" className="flex justify-between font-semibold text-slate-800 mb-3">
                   <span>Annual Income</span>
                   <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-sm">{formatCurrency(inputs.income)}</span>
                 </label>
-                {/* VISUAL UPDATE: Added custom styling and focus rings for keyboard users */}
                 <input 
                   id="income-slider"
                   type="range" min="40000" max="250000" step="1000" 
@@ -233,7 +270,7 @@
             </div>
           </div>
 
-          {/* VISUAL UPDATE: Warning banners now have nice SVG icons */}
+          {/* Warning Banners */}
           {projection.hitLifetimeCapEarly && (
             <div className="bg-amber-50 border border-amber-200 p-5 rounded-xl flex items-start gap-4">
               <svg className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -256,7 +293,7 @@
             </div>
           )}
 
-          {/* VISUAL UPDATE: Summary cards get a hover animation (hover:-translate-y-1) and Indigo/Teal colors */}
+          {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-indigo-600 text-white p-6 sm:p-8 rounded-2xl shadow-lg shadow-indigo-600/20 transform transition duration-300 hover:-translate-y-1">
               <p className="text-indigo-100 text-sm font-semibold tracking-wide uppercase mb-2">Projected Down Payment</p>
@@ -272,7 +309,7 @@
             </div>
           </div>
 
-          {/* VISUAL UPDATE: The Brand New Composition Bar Section */}
+          {/* Composition Bar */}
           <div className="bg-white border border-slate-200 p-6 sm:p-8 rounded-2xl shadow-sm space-y-6">
             <h3 className="font-bold text-slate-900 text-lg">Whose Money Is It? (Portfolio Composition)</h3>
             <div className="w-full h-10 flex rounded-xl overflow-hidden border border-slate-100">
@@ -287,11 +324,22 @@
             </div>
           </div>
 
-          {/* VISUAL UPDATE: Cleaner, more spacious data table */}
+          {/* Data Table */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-            <div className="p-5 sm:p-6 border-b border-slate-100 bg-slate-50/50">
+            
+            {/* FEATURE UPDATE 2: Added the Download CSV Button to the header */}
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
               <h3 className="font-bold text-slate-900 text-lg">Year-by-Year Growth</h3>
+              <button 
+                onClick={handleDownloadCSV}
+                className="text-sm bg-white border border-slate-300 hover:bg-slate-50 hover:text-indigo-600 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 text-slate-700 py-2 px-5 rounded-lg shadow-sm transition-all font-semibold flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export CSV
+              </button>
             </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="bg-white text-slate-500 font-semibold uppercase tracking-wider text-xs border-b border-slate-200">
