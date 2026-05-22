@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FHSA Optimization Engine</title>
+  
+  <!-- Load Tailwind CSS (for styling) and React (for making it interactive) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen py-8 font-sans">
+  <!-- The React app will be injected right here -->
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react,typescript">
+    const { useState, useMemo } = React;
+
+    // =====================================================================
+    // PART 1: THE MATH BRAIN
+    // This handles the Canadian FHSA rules. No visuals, just calculations.
+    // =====================================================================
+    const LIFETIME_CAP = 40000;
+    const ANNUAL_BASE_CAP = 8000;
+    const MAX_CARRY_FORWARD = 8000;
+
+    // A cheat sheet to estimate tax savings based on income
+    function getMarginalTaxRate(income) {
+      if (income <= 55000) return 0.20;    // 20% savings
+      if (income <= 110000) return 0.305;  // 30.5% savings
+      if (income <= 165000) return 0.36;   // 36% savings
+      if (income <= 235000) return 0.41;   // 41% savings
+      return 0.48;                         // 48% savings
+    }
+
+    // The main calculator that runs the timeline
+    function calculateFHSASchedule(inputs) {
+      const taxRate = getMarginalTaxRate(inputs.income);
+      
+      let lifetimeRoom = LIFETIME_CAP;
+      let carryForwardRoom = 0;
+      let currentBalance = 0;
+      let previousYearRefund = 0;
+      
+      const schedule = [];
+      let totalOutOfPocket = 0;
+      let totalRefundsGenerated = 0;
+      let totalRefundsReinvested = 0; // Tracked separately to keep math clean
+      let hitLifetimeCapEarly = false;
+      let capHitYear = null;
+
+      // Loop through the years
+      for (let year = 1; year <= inputs.years; year++) {
+        const theoreticalAnnualRoom = ANNUAL_BASE_CAP + carryForwardRoom;
+        const availableRoomThisYear = Math.min(lifetimeRoom, theoreticalAnnualRoom);
+        
+        // Put last year's tax refund back in?
+        const refundInvestedThisYear = inputs.reinvestRefund 
+          ? Math.min(previousYearRefund, availableRoomThisYear) 
+          : 0;
+        
+        // Put your own cash in
+        const remainingRoomAfterRefund = availableRoomThisYear - refundInvestedThisYear;
+        const outOfPocketThisYear = Math.min(inputs.annualContribution, remainingRoomAfterRefund);
+        const totalDepositThisYear = refundInvestedThisYear + outOfPocketThisYear;
+        
+        lifetimeRoom -= totalDepositThisYear;
+        
+        // Carry forward unused room (max $8k)
+        const unusedRoomThisYear = Math.max(0, theoreticalAnnualRoom - totalDepositThisYear);
+        carryForwardRoom = Math.min(MAX_CARRY_FORWARD, unusedRoomThisYear);
+        
+        // Did we hit the $40k wall?
+        if (lifetimeRoom <= 0 && !hitLifetimeCapEarly && year < inputs.years) {
+          hitLifetimeCapEarly = true;
+          capHitYear = year;
+        }
+
+        // Calculate taxes and investment growth
+        const taxRefundGenerated = totalDepositThisYear * taxRate;
+        previousYearRefund = taxRefundGenerated;
+        
+        const returnEarned = (currentBalance + totalDepositThisYear) * inputs.returnRate;
+        const endingBalance = currentBalance + totalDepositThisYear + returnEarned;
+
+        // Save this year's data
+        schedule.push({
+          year,
+          openingBalance: currentBalance,
+          outOfPocket: outOfPocketThisYear,
+          refundReinvested: refundInvestedThisYear,
+          returnEarned,
+          endingBalance,
+          taxRefundGenerated
+        });
+
+        currentBalance = endingBalance;
+        totalOutOfPocket += outOfPocketThisYear;
+        totalRefundsGenerated += taxRefundGenerated;
+        totalRefundsReinvested += refundInvestedThisYear;
+      }
+
+      return {
+        schedule,
+        totalEndingBalance: currentBalance,
+        totalOutOfPocket,
+        totalRefundsGenerated,
+        totalRefundsReinvested, // Needed for visual charts later
+        hitLifetimeCapEarly,
+        capHitYear
+      };
+    }
+
+    // =====================================================================
+    // PART 2: THE VISUAL APP
+    // This draws the sliders and tables on your screen.
+    // =====================================================================
+    function FHSACalculator() {
+      // Default starting numbers
+      const [inputs, setInputs] = useState({
+        income: 85000,
+        annualContribution: 8000,
+        returnRate: 0.05,
+        years: 5,
+        reinvestRefund: true
+      });
+
+      // Run the math brain whenever a slider moves
+      const projection = useMemo(() => calculateFHSASchedule(inputs), [inputs]);
+
+      // Make numbers look like money (e.g. $5,000)
+      const formatCurrency = (val) => 
+        new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(val);
+
+      // Update values when sliders are dragged
+      const handleInputChange = (field, value) => {
+        setInputs(prev => ({ ...prev, [field]: value }));
+      };
+
+      return (
+        <div className="max-w-6xl mx-auto p-4 space-y-8 text-slate-800">
+          
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl font-bold text-slate-900">FHSA Optimization Engine</h1>
+            <p className="text-slate-500">Model your First Home Savings Account growth and tax efficiency.</p>
+          </div>
+
+          {/* Control Panel */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <div>
+                <label className="flex justify-between font-medium mb-2">
+                  <span>Annual Income</span>
+                  <span className="text-blue-600">{formatCurrency(inputs.income)}</span>
+                </label>
+                <input 
+                  type="range" min="40000" max="250000" step="1000" 
+                  value={inputs.income}
+                  onChange={(e) => handleInputChange('income', Number(e.target.value))}
+                  className="w-full accent-blue-600 cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <label className="flex justify-between font-medium mb-2">
+                  <span>Annual Contribution</span>
+                  <span className="text-blue-600">{formatCurrency(inputs.annualContribution)}</span>
+                </label>
+                <input 
+                  type="range" min="0" max="8000" step="500" 
+                  value={inputs.annualContribution}
+                  onChange={(e) => handleInputChange('annualContribution', Number(e.target.value))}
+                  className="w-full accent-blue-600 cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <label className="flex justify-between font-medium mb-2">
+                  <span>Expected Return Rate</span>
+                  <span className="text-blue-600">{(inputs.returnRate * 100).toFixed(1)}%</span>
+                </label>
+                <input 
+                  type="range" min="0" max="0.12" step="0.005" 
+                  value={inputs.returnRate}
+                  onChange={(e) => handleInputChange('returnRate', Number(e.target.value))}
+                  className="w-full accent-blue-600 cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <label className="flex justify-between font-medium mb-2">
+                  <span>Timeline (Years)</span>
+                  <span className="text-blue-600">{inputs.years} Years</span>
+                </label>
+                <input 
+                  type="range" min="1" max="15" step="1" 
+                  value={inputs.years}
+                  onChange={(e) => handleInputChange('years', Number(e.target.value))}
+                  className="w-full accent-blue-600 cursor-pointer"
+                />
+              </div>
+            </div>
+
+            <div className="col-span-1 md:col-span-2 pt-4 border-t border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-slate-900">Reinvest Tax Refunds</h3>
+                <p className="text-sm text-slate-500">Automatically roll previous year's tax savings into the next year's contribution.</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer"
+                  checked={inputs.reinvestRefund}
+                  onChange={(e) => handleInputChange('reinvestRefund', e.target.checked)}
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+          </div>
+
+          {/* WARNING: 40k Cap */}
+          {projection.hitLifetimeCapEarly && (
+            <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg shadow-sm">
+              <p className="text-amber-800 text-sm font-medium">
+                Note: You hit the $40,000 lifetime contribution ceiling in Year {projection.capHitYear}. Future years will only grow via compound interest.
+              </p>
+            </div>
+          )}
+
+          {/* WARNING: 15-Year Rule */}
+          {inputs.years === 15 && (
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg shadow-sm">
+              <p className="text-blue-800 text-sm font-medium">
+                The 15-Year Expiry Rule: An FHSA can only stay open for 15 years. You must either buy a qualifying home, transfer this tax-free to your RRSP, or withdraw it as taxable cash.
+              </p>
+            </div>
+          )}
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-blue-600 text-white p-6 rounded-xl shadow-sm">
+              <p className="text-blue-100 text-sm font-medium mb-1">Projected Down Payment</p>
+              <p className="text-3xl font-bold">{formatCurrency(projection.totalEndingBalance)}</p>
+            </div>
+            <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
+              <p className="text-slate-500 text-sm font-medium mb-1">Total Tax Refunds</p>
+              <p className="text-3xl font-bold text-emerald-600">{formatCurrency(projection.totalRefundsGenerated)}</p>
+            </div>
+            <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
+              <p className="text-slate-500 text-sm font-medium mb-1">Total Out-of-Pocket</p>
+              <p className="text-3xl font-bold text-slate-800">{formatCurrency(projection.totalOutOfPocket)}</p>
+            </div>
+          </div>
+
+          {/* Data Table */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-4">Year</th>
+                    <th className="px-6 py-4">Opening Balance</th>
+                    <th className="px-6 py-4">Out-of-Pocket</th>
+                    {inputs.reinvestRefund && <th className="px-6 py-4">Refund Reinvested</th>}
+                    <th className="px-6 py-4">Return Earned</th>
+                    <th className="px-6 py-4 text-right">Ending Balance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {projection.schedule.map((row) => (
+                    <tr key={row.year} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 font-medium">{row.year}</td>
+                      <td className="px-6 py-4 text-slate-500">{formatCurrency(row.openingBalance)}</td>
+                      <td className="px-6 py-4">{formatCurrency(row.outOfPocket)}</td>
+                      {inputs.reinvestRefund && <td className="px-6 py-4 text-emerald-600">{formatCurrency(row.refundReinvested)}</td>}
+                      <td className="px-6 py-4 text-blue-600">+{formatCurrency(row.returnEarned)}</td>
+                      <td className="px-6 py-4 text-right font-semibold">{formatCurrency(row.endingBalance)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<FHSACalculator />);
+  </script>
+</body>
+</html>
