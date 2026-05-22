@@ -13,14 +13,40 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; }
+    
+    /* FEATURE UPDATE: Custom CSS to make the sliders pop */
+    /* Resets the default boring browser styles */
     input[type=range] {
-      accent-color: #4f46e5; 
-      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent; 
     }
     
-    /* FEATURE UPDATE: Print-Friendly CSS! 
-       When the user hits Ctrl+P to print, anything with the class "no-print" disappears. 
-       This means they get a clean report without useless sliders showing up on the paper. */
+    /* Styles the draggable "thumb" for Chrome/Safari/Edge */
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #4f46e5; /* Indigo-600 */
+      cursor: pointer;
+      border: 3px solid white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4); /* Makes it pop */
+    }
+    
+    /* Styles the draggable "thumb" for Firefox */
+    input[type=range]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #4f46e5;
+      cursor: pointer;
+      border: 3px solid white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+    
+    /* Print Layout Mode */
     @media print {
       body { background-color: white !important; }
       .no-print { display: none !important; }
@@ -41,7 +67,6 @@
     const ANNUAL_BASE_CAP = 8000;
     const MAX_CARRY_FORWARD = 8000;
 
-    // The tax cheat sheet
     function getMarginalTaxRate(income) {
       if (income <= 55000) return 0.20;
       if (income <= 110000) return 0.305;
@@ -123,7 +148,6 @@
     // PART 2: THE VISUAL APP 
     // =====================================================================
     function FHSACalculator() {
-      
       const defaultInputs = { income: 85000, annualContribution: 8000, returnRate: 0.05, years: 5, reinvestRefund: true };
 
       const [inputs, setInputs] = useState(() => {
@@ -147,7 +171,6 @@
         setInputs(prev => ({ ...prev, [field]: value }));
       };
 
-      // FEATURE UPDATE: The Reset function. This forces the state back to defaults.
       const handleReset = () => {
         setInputs(defaultInputs);
       };
@@ -174,25 +197,28 @@
         document.body.removeChild(link);
       };
 
+      // FEATURE UPDATE: Helper function for the custom slider track fill.
+      // It figures out what % of the slider is "filled" based on current position.
+      const getSliderFillPct = (value, min, max) => {
+        return ((value - min) / (max - min)) * 100;
+      };
+
       const totalReturns = projection.totalEndingBalance - projection.totalOutOfPocket - projection.totalRefundsReinvested;
       const outOfPocketPct = projection.totalEndingBalance > 0 ? (projection.totalOutOfPocket / projection.totalEndingBalance) * 100 : 0;
       const refundsPct = projection.totalEndingBalance > 0 ? (projection.totalRefundsReinvested / projection.totalEndingBalance) * 100 : 0;
       const returnsPct = projection.totalEndingBalance > 0 ? (totalReturns / projection.totalEndingBalance) * 100 : 0;
       
-      // Calculate the active tax rate percentage to show the user
       const currentTaxRatePct = (getMarginalTaxRate(inputs.income) * 100).toFixed(1);
 
       return (
         <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-10 text-slate-800">
           
-          {/* Header */}
           <div className="text-center space-y-3 relative">
             <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">FHSA Optimization Engine</h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               Plan your First Home Savings Account. Maximize your tax refunds and map out your path to homeownership.
             </p>
             
-            {/* FEATURE UPDATE: The Reset Button (Hidden when printing!) */}
             <button 
               onClick={handleReset}
               className="no-print absolute top-0 right-0 mt-2 mr-2 text-sm text-slate-500 hover:text-indigo-600 transition-colors font-medium underline underline-offset-4"
@@ -202,72 +228,77 @@
             </button>
           </div>
 
-          {/* Control Panel (Notice the 'no-print' class - this entire box vanishes when printing a PDF) */}
-          <div className="no-print bg-white p-6 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-            <div className="space-y-8">
-              <div>
-                <label htmlFor="income-slider" className="flex justify-between font-semibold text-slate-800 mb-3">
-                  <span>Annual Income</span>
-                  <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-sm">{formatCurrency(inputs.income)}</span>
-                </label>
-                <input 
-                  id="income-slider"
-                  type="range" min="40000" max="250000" step="1000" 
-                  value={inputs.income}
-                  onChange={(e) => handleInputChange('income', Number(e.target.value))}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100"
-                />
-                {/* FEATURE UPDATE: Tax Transparency Label */}
-                <p className="text-xs text-slate-500 mt-2 font-medium">
-                  Estimated Tax Savings Rate: <span className="text-teal-600 font-bold">{currentTaxRatePct}%</span>
-                </p>
-              </div>
-
-              <div>
-                <label htmlFor="contribution-slider" className="flex justify-between font-semibold text-slate-800 mb-3">
-                  <span>Annual Contribution</span>
-                  <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-sm">{formatCurrency(inputs.annualContribution)}</span>
-                </label>
-                <input 
-                  id="contribution-slider"
-                  type="range" min="0" max="8000" step="500" 
-                  value={inputs.annualContribution}
-                  onChange={(e) => handleInputChange('annualContribution', Number(e.target.value))}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100"
-                />
-              </div>
+          {/* FEATURE UPDATE: Removed the column wrappers inside here. 
+              It is now a pure 2x2 grid. Items auto-align horizontally by row. */}
+          <div className="no-print bg-white p-6 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
+            
+            {/* ROW 1: Income (Left) & Return Rate (Right) */}
+            <div className="flex flex-col justify-start">
+              <label htmlFor="income-slider" className="flex justify-between font-semibold text-slate-800 mb-3">
+                <span>Annual Income</span>
+                <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-sm">{formatCurrency(inputs.income)}</span>
+              </label>
+              <input 
+                id="income-slider"
+                type="range" min="40000" max="250000" step="1000" 
+                value={inputs.income}
+                onChange={(e) => handleInputChange('income', Number(e.target.value))}
+                /* Draws the custom blue fill track */
+                style={{ background: `linear-gradient(to right, #4f46e5 ${getSliderFillPct(inputs.income, 40000, 250000)}%, #e2e8f0 ${getSliderFillPct(inputs.income, 40000, 250000)}%)` }}
+                className="w-full h-2 rounded-lg appearance-none focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 cursor-pointer"
+              />
+              <p className="text-xs text-slate-500 mt-3 font-medium">
+                Estimated Tax Savings Rate: <span className="text-teal-600 font-bold">{currentTaxRatePct}%</span>
+              </p>
             </div>
 
-            <div className="space-y-8">
-              <div>
-                <label htmlFor="return-slider" className="flex justify-between font-semibold text-slate-800 mb-3">
-                  <span>Expected Return Rate</span>
-                  <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-sm">{(inputs.returnRate * 100).toFixed(1)}%</span>
-                </label>
-                <input 
-                  id="return-slider"
-                  type="range" min="0" max="0.12" step="0.005" 
-                  value={inputs.returnRate}
-                  onChange={(e) => handleInputChange('returnRate', Number(e.target.value))}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="years-slider" className="flex justify-between font-semibold text-slate-800 mb-3">
-                  <span>Timeline (Years)</span>
-                  <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-sm">{inputs.years} Years</span>
-                </label>
-                <input 
-                  id="years-slider"
-                  type="range" min="1" max="15" step="1" 
-                  value={inputs.years}
-                  onChange={(e) => handleInputChange('years', Number(e.target.value))}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100"
-                />
-              </div>
+            <div className="flex flex-col justify-start">
+              <label htmlFor="return-slider" className="flex justify-between font-semibold text-slate-800 mb-3">
+                <span>Expected Return Rate</span>
+                <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-sm">{(inputs.returnRate * 100).toFixed(1)}%</span>
+              </label>
+              <input 
+                id="return-slider"
+                type="range" min="0" max="0.12" step="0.005" 
+                value={inputs.returnRate}
+                onChange={(e) => handleInputChange('returnRate', Number(e.target.value))}
+                style={{ background: `linear-gradient(to right, #4f46e5 ${getSliderFillPct(inputs.returnRate, 0, 0.12)}%, #e2e8f0 ${getSliderFillPct(inputs.returnRate, 0, 0.12)}%)` }}
+                className="w-full h-2 rounded-lg appearance-none focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 cursor-pointer"
+              />
             </div>
 
+            {/* ROW 2: Contribution (Left) & Timeline (Right) */}
+            <div className="flex flex-col justify-start">
+              <label htmlFor="contribution-slider" className="flex justify-between font-semibold text-slate-800 mb-3">
+                <span>Annual Contribution</span>
+                <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-sm">{formatCurrency(inputs.annualContribution)}</span>
+              </label>
+              <input 
+                id="contribution-slider"
+                type="range" min="0" max="8000" step="500" 
+                value={inputs.annualContribution}
+                onChange={(e) => handleInputChange('annualContribution', Number(e.target.value))}
+                style={{ background: `linear-gradient(to right, #4f46e5 ${getSliderFillPct(inputs.annualContribution, 0, 8000)}%, #e2e8f0 ${getSliderFillPct(inputs.annualContribution, 0, 8000)}%)` }}
+                className="w-full h-2 rounded-lg appearance-none focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 cursor-pointer"
+              />
+            </div>
+
+            <div className="flex flex-col justify-start">
+              <label htmlFor="years-slider" className="flex justify-between font-semibold text-slate-800 mb-3">
+                <span>Timeline (Years)</span>
+                <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-sm">{inputs.years} Years</span>
+              </label>
+              <input 
+                id="years-slider"
+                type="range" min="1" max="15" step="1" 
+                value={inputs.years}
+                onChange={(e) => handleInputChange('years', Number(e.target.value))}
+                style={{ background: `linear-gradient(to right, #4f46e5 ${getSliderFillPct(inputs.years, 1, 15)}%, #e2e8f0 ${getSliderFillPct(inputs.years, 1, 15)}%)` }}
+                className="w-full h-2 rounded-lg appearance-none focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 cursor-pointer"
+              />
+            </div>
+
+            {/* ROW 3: The Toggle Switch */}
             <div className="col-span-1 md:col-span-2 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h3 className="font-semibold text-slate-900">Reinvest Tax Refunds</h3>
@@ -344,7 +375,6 @@
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
             <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
               <h3 className="font-bold text-slate-900 text-lg">Year-by-Year Growth</h3>
-              {/* FEATURE UPDATE: The export button gets hidden during printing too! */}
               <button 
                 onClick={handleDownloadCSV}
                 className="no-print text-sm bg-white border border-slate-300 hover:bg-slate-50 hover:text-indigo-600 focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 text-slate-700 py-2 px-5 rounded-lg shadow-sm transition-all font-semibold flex items-center gap-2"
