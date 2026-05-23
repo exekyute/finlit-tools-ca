@@ -14,6 +14,8 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <!-- Babel translates our JSX (the HTML-looking React code below) into plain JS in the browser -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Chart.js renders the "Balance Growth Over Time" line chart. Same CDN-only pattern as everything else. -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 
   <!-- Google Fonts: Inter is a clean modern sans-serif we use everywhere -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -81,7 +83,7 @@
 
   <script type="text/babel" data-presets="react,typescript">
     // Pull the React hooks we need into local names so we can use them without the React. prefix
-    const { useState, useMemo, useEffect } = React;
+    const { useState, useMemo, useEffect, useRef } = React;
 
     // =====================================================================
     // SHARED HELPERS — copy these into any new tool in the family.
@@ -294,24 +296,163 @@
     // =====================================================================
     // The React component that renders the entire page. It owns the slider
     // state, calls the math brain whenever inputs change, and renders the
-    // result as the cards, bar, and table you see on screen.
+    // result as the cards, bar, chart, and table you see on screen.
 
     // Centralized slider bounds — the JSX below reads min/max/step from here
     // so the magic numbers live in one place instead of being scattered through markup.
     const SLIDER_BOUNDS = {
-      childAge:            { min: 0, max: CESG_LAST_AGE, step: 1   },
-      annualContribution:  { min: 0, max: 5000,          step: 250 },
-      returnRate:          { min: 0, max: 0.12,          step: 0.005 }
+      childAge:            { min: 0,     max: CESG_LAST_AGE, step: 1     },
+      annualContribution:  { min: 0,     max: 5000,          step: 250   },
+      returnRate:          { min: 0,     max: 0.12,          step: 0.005 },
+      tuitionGoal:         { min: 40000, max: 200000,        step: 5000  }
     };
     // Total possible years of CESG eligibility (age 0 through 17 inclusive) — used by
     // the "Years of CESG Remaining" progress bar to compute its fill percentage.
     const MAX_ELIGIBLE_YEARS = CESG_LAST_AGE + 1;
 
+    // =====================================================================
+    // BalanceChart — line chart of the RESP balance over time
+    // =====================================================================
+    // Reads projection.schedule and renders three stacked area datasets
+    // (your cash, CESG grant, market growth via the total line) using Chart.js.
+    // The TOP of the stack equals endingBalance, so the silhouette traces the
+    // actual balance curve while the colour bands show source decomposition.
+    // Colours match the "Whose Money Is It?" composition bar for visual consistency.
+
+    function BalanceChart({ projection }) {
+      const canvasRef = useRef(null);   // points to the <canvas> DOM element
+      const chartRef  = useRef(null);   // holds the Chart.js instance so we can destroy/replace it
+
+      useEffect(() => {
+        // Bail out if there's no canvas yet (e.g. the empty-state path below is showing)
+        // or if there's nothing meaningful to chart.
+        if (!canvasRef.current || projection.totalEndingBalance === 0) return;
+
+        // Walk the schedule once to build cumulative arrays.
+        // Bottom layer  = cumulative contributions (your cash)
+        // Middle layer  = bottom + cumulative CESG (your cash + grant)
+        // Top layer     = endingBalance for that year (the balance curve)
+        let cumContrib = 0, cumCESG = 0;
+        const labels        = [];
+        const contribSeries = [];
+        const cesgSeries    = [];
+        const totalSeries   = [];
+        projection.schedule.forEach(row => {
+          cumContrib += row.contribution;
+          cumCESG    += row.cesgEarned;
+          labels.push(`Age ${row.age}`);
+          contribSeries.push(cumContrib);
+          cesgSeries.push(cumContrib + cumCESG);
+          totalSeries.push(row.endingBalance);
+        });
+
+        // If there's already a chart from a previous render, tear it down first
+        // so we don't leak Chart.js instances when the projection changes.
+        if (chartRef.current) chartRef.current.destroy();
+
+        // Build the Chart.js instance and store it on the ref for future cleanup.
+        chartRef.current = new Chart(canvasRef.current, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              {
+                // Bottom band — parent's contributions, in slate (same colour as the composition bar)
+                label: 'Your Cash',
+                data: contribSeries,
+                borderColor: '#334155',                   // slate-700
+                backgroundColor: 'rgba(51, 65, 85, 0.55)',
+                fill: 'origin',                            // fill all the way down to the x-axis
+                tension: 0.25,
+                pointRadius: 3,
+                pointHoverRadius: 5
+              },
+              {
+                // Middle band — government grant, stacked on top of contributions
+                label: 'CESG Grants',
+                data: cesgSeries,
+                borderColor: '#14b8a6',                   // teal-500
+                backgroundColor: 'rgba(20, 184, 166, 0.55)',
+                fill: '-1',                                // fill down to the previous dataset
+                tension: 0.25,
+                pointRadius: 3,
+                pointHoverRadius: 5
+              },
+              {
+                // Top band — market growth lifts the total to the actual endingBalance line
+                label: 'Total (with Growth)',
+                data: totalSeries,
+                borderColor: '#38bdf8',                   // sky-400
+                backgroundColor: 'rgba(56, 189, 248, 0.55)',
+                fill: '-1',
+                tension: 0.25,
+                pointRadius: 3,
+                pointHoverRadius: 5
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,                  // let the chart fill the parent <div className="h-80">
+            interaction: { mode: 'index', intersect: false }, // hover anywhere on a column highlights all 3 layers
+            scales: {
+              y: {
+                // Y-axis ticks formatted as Canadian dollars
+                ticks: { callback: (value) => formatCurrency(value) }
+              }
+            },
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  // Tooltip rows show "Dataset label: $X,XXX"
+                  label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`
+                }
+              },
+              legend: {
+                position: 'bottom',
+                labels: { usePointStyle: true, padding: 16 }
+              }
+            }
+          }
+        });
+
+        // Cleanup when the component unmounts or projection changes again
+        return () => {
+          if (chartRef.current) {
+            chartRef.current.destroy();
+            chartRef.current = null;
+          }
+        };
+      }, [projection]);
+
+      // Empty-state — show a friendly placeholder instead of an empty chart frame.
+      if (projection.totalEndingBalance === 0) {
+        return (
+          <p className="text-sm text-slate-500 italic text-center py-12">
+            Move the Annual Contribution slider above $0 to see the growth curve.
+          </p>
+        );
+      }
+
+      // Normal state — render the canvas inside a fixed-height container so
+      // Chart.js's responsive mode has a stable size to work with.
+      return (
+        <div className="h-80">
+          <canvas ref={canvasRef}></canvas>
+        </div>
+      );
+    }
+
     function RESPCalculator() {
 
       // ---- STATE: the values driving the sliders ----
       // These are the "starting point" if the user has never visited before, or hits Reset.
-      const defaultInputs = { childAge: 5, annualContribution: 2500, returnRate: 0.06 };
+      const defaultInputs = {
+        childAge:           5,
+        annualContribution: 2500,
+        returnRate:         0.06,
+        tuitionGoal:        80000   // ~current Canadian in-province undergrad 4-yr total
+      };
 
       // loadInputsFromStorage is defined above and does a defensive default-merge —
       // any field added in a future version falls back to its default instead of
@@ -363,6 +504,16 @@
       const cesgPct     = projection.totalEndingBalance > 0 ? (projection.totalCESG          / projection.totalEndingBalance) * 100 : 0;
       const growthPct   = projection.totalEndingBalance > 0 ? (totalGrowth                   / projection.totalEndingBalance) * 100 : 0;
 
+      // ---- DERIVED VALUES for the tuition goal overlay ----
+      // Compute what % of the user's goal the projection covers, and which "story"
+      // to tell underneath the progress bar (on-track vs. shortfall).
+      const tuitionPct        = inputs.tuitionGoal > 0
+        ? (projection.totalEndingBalance / inputs.tuitionGoal) * 100
+        : 0;
+      const tuitionPctClamped = Math.min(100, tuitionPct);                         // clipped for the bar width — never overflows the container
+      const onTrack           = projection.totalEndingBalance >= inputs.tuitionGoal;
+      const tuitionGap        = inputs.tuitionGoal - projection.totalEndingBalance; // positive = shortfall, negative = surplus
+
       // ---- THE PAGE LAYOUT ----
       return (
         <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-10 text-slate-800">
@@ -383,9 +534,9 @@
             </button>
           </div>
 
-          {/* INPUT CARD: white card containing the 4 input slots arranged as a 2x2 grid.
-              Three slots are sliders, the fourth is a read-only "Years of CESG Remaining" display
-              that gets computed from the child's age — keeps the grid visually balanced. */}
+          {/* INPUT CARD: white card containing the input slots.
+              Rows 1-2: a 2x2 grid of the three sliders plus a read-only "Years of CESG Remaining" display.
+              Row 3:    full-width "4-Year Tuition Goal" slider, separated by a top border. */}
           <div className="no-print bg-white p-6 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
 
             {/* ROW 1, LEFT CELL: Child's Age slider */}
@@ -467,6 +618,28 @@
                 Each remaining year unlocks up to <span className="text-teal-600 font-bold">$500</span> of free grant.
               </p>
             </div>
+
+            {/* ROW 3 (full-width): 4-Year Tuition Goal slider.
+                Spans both columns and sits below the 2x2 grid with a top divider —
+                same full-width-row treatment the FHSA tool uses for its reinvest-refund toggle. */}
+            <div className="col-span-1 md:col-span-2 pt-6 border-t border-slate-100 flex flex-col justify-start">
+              <label htmlFor="tuition-slider" className="flex justify-between font-semibold text-slate-800 mb-3">
+                <span>4-Year Tuition Goal</span>
+                <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-sm">{formatCurrency(inputs.tuitionGoal)}</span>
+              </label>
+              <input
+                id="tuition-slider"
+                type="range"
+                min={SLIDER_BOUNDS.tuitionGoal.min} max={SLIDER_BOUNDS.tuitionGoal.max} step={SLIDER_BOUNDS.tuitionGoal.step}
+                value={inputs.tuitionGoal}
+                onChange={(e) => handleInputChange('tuitionGoal', Number(e.target.value))}
+                style={{ background: `linear-gradient(to right, #4f46e5 ${getSliderFillPct(inputs.tuitionGoal, SLIDER_BOUNDS.tuitionGoal.min, SLIDER_BOUNDS.tuitionGoal.max)}%, #e2e8f0 ${getSliderFillPct(inputs.tuitionGoal, SLIDER_BOUNDS.tuitionGoal.min, SLIDER_BOUNDS.tuitionGoal.max)}%)` }}
+                className="w-full h-2 rounded-lg appearance-none focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 cursor-pointer"
+              />
+              <p className="text-xs text-slate-500 mt-3 font-medium">
+                In-province undergrad averages <span className="text-teal-600 font-bold">~$80K</span> total. Out-of-province or professional programs can run $150K+.
+              </p>
+            </div>
           </div>
 
           {/* WARNING BANNERS: only render when the projection actually trips a rule.
@@ -538,6 +711,39 @@
               <p className="text-slate-600 text-sm font-semibold tracking-wide uppercase mb-2">Your Total Contributions</p>
               <p className="text-4xl font-extrabold text-slate-800">{formatCurrency(projection.totalContributions)}</p>
             </div>
+          </div>
+
+          {/* TUITION GOAL PROGRESS: translates the projection into "X% of goal covered".
+              Indigo bar when there's a shortfall; teal bar when at or over the goal. */}
+          <div className="bg-white border border-slate-200 p-6 sm:p-8 rounded-2xl shadow-sm space-y-6">
+            <h3 className="font-bold text-slate-900 text-lg">Tuition Goal Progress</h3>
+            {/* The horizontal bar. Same visual language as the "Whose Money Is It?" bar below. */}
+            <div className="w-full h-10 flex rounded-xl overflow-hidden border border-slate-100 bg-slate-100">
+              <div
+                style={{ width: `${tuitionPctClamped}%` }}
+                className={`${onTrack ? 'bg-teal-500' : 'bg-indigo-600'} transition-all duration-700 ease-out`}
+                title={`${tuitionPct.toFixed(1)}% covered`}
+              ></div>
+            </div>
+            {/* Big stat line (colour matches the bar) + smaller status line with the actual gap or surplus */}
+            <div className="space-y-1">
+              <p className={`text-lg font-bold ${onTrack ? 'text-teal-600' : 'text-indigo-600'}`}>
+                {tuitionPct.toFixed(0)}% of {formatCurrency(inputs.tuitionGoal)} goal covered
+              </p>
+              <p className="text-sm text-slate-600">
+                {onTrack
+                  ? <>On track — <span className="font-semibold text-teal-700">{formatCurrency(-tuitionGap)}</span> above your goal.</>
+                  : <>Shortfall: <span className="font-semibold text-amber-700">{formatCurrency(tuitionGap)}</span> — try raising contributions or starting earlier.</>
+                }
+              </p>
+            </div>
+          </div>
+
+          {/* BALANCE GROWTH OVER TIME: stacked-area line chart of the projection.
+              Reads projection.schedule via the <BalanceChart> component defined above. */}
+          <div className="bg-white border border-slate-200 p-6 sm:p-8 rounded-2xl shadow-sm space-y-6">
+            <h3 className="font-bold text-slate-900 text-lg">Balance Growth Over Time</h3>
+            <BalanceChart projection={projection} />
           </div>
 
           {/* "WHOSE MONEY IS IT?" BAR: stacked horizontal bar split into 3 coloured segments.
@@ -619,9 +825,10 @@
     // INLINE TEST SUITE — runs on every page load, logs to browser console
     // =====================================================================
     // Self-running smoke tests for the math brain. Open DevTools (F12) and
-    // look at the Console tab to see results. Five cases cover the default
-    // scenario plus the four corner cases most likely to break if a future
-    // iteration accidentally touches calculateRESPSchedule.
+    // look at the Console tab to see results. Six cases cover the default
+    // scenario plus the corner cases most likely to break if a future
+    // iteration accidentally touches calculateRESPSchedule, PLUS a sanity
+    // check that the chart's cumulative arrays line up with the existing totals.
 
     function runMathTests() {
       const within = (actual, expected, tolerance) =>
@@ -677,6 +884,20 @@
             return [
               { name: 'totalEndingBalance === 0',  pass: r.totalEndingBalance === 0 },
               { name: 'totalCESG === 0',           pass: r.totalCESG === 0 }
+            ];
+          }
+        },
+        {
+          name: 'Cumulative series end-points match summary totals (chart sanity)',
+          run: () => {
+            const r = calculateRESPSchedule({ childAge: 5, annualContribution: 2500, returnRate: 0.06 });
+            let cumContrib = 0, cumCESG = 0;
+            r.schedule.forEach(row => { cumContrib += row.contribution; cumCESG += row.cesgEarned; });
+            const lastBalance = r.schedule[r.schedule.length - 1].endingBalance;
+            return [
+              { name: 'sum(contribution) === totalContributions',  pass: within(cumContrib, r.totalContributions) },
+              { name: 'sum(cesgEarned) === totalCESG',             pass: within(cumCESG, r.totalCESG) },
+              { name: 'last endingBalance === totalEndingBalance', pass: within(lastBalance, r.totalEndingBalance) }
             ];
           }
         }
