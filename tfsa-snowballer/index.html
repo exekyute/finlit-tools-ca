@@ -14,15 +14,12 @@
   <style>
     body { font-family: 'Inter', sans-serif; }
     
-    /* --- CUSTOM SLIDER STYLING --- */
-    /* This section removes the default, boring browser sliders and replaces them with custom interactive elements */
     input[type=range] {
       -webkit-appearance: none;
       appearance: none;
       background: transparent; 
     }
     
-    /* Styles the draggable circle (the "thumb") for Chrome, Safari, and Edge */
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
@@ -35,7 +32,6 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.4); 
     }
     
-    /* Styles the draggable circle for Firefox */
     input[type=range]::-moz-range-thumb {
       width: 20px;
       height: 20px;
@@ -53,12 +49,6 @@
   <script type="text/babel" data-presets="react,typescript">
     const { useState, useMemo, useEffect } = React;
 
-    // =====================================================================
-    // SECTION 1: THE MATH ENGINE
-    // This handles all the calculations before we show anything on screen.
-    // =====================================================================
-    
-    // A simplified helper to guess a user's tax bracket based on their income.
     function getMarginalTaxRate(income) {
       if (income <= 55000) return 0.20;
       if (income <= 110000) return 0.305;
@@ -67,15 +57,11 @@
       return 0.48;
     }
 
-    // The main function that runs the numbers year by year.
     function calculateTFSASchedule(inputs) {
-      // Step 1: Figure out how much taxes will eat into regular investments.
-      // We assume a mix of stocks/dividends, so the tax on growth is roughly half their normal income tax rate.
       const marginalRate = getMarginalTaxRate(inputs.income);
       const taxDrag = marginalRate * 0.5; 
       const taxableReturnRate = inputs.returnRate * (1 - taxDrag);
 
-      // Step 2: Set up our starting balances at zero.
       let tfsaBalance = 0;
       let taxableBalance = 0;
       let totalContributed = 0;
@@ -83,21 +69,17 @@
       const schedule = [];
       const yearsToGrow = inputs.retirementAge - inputs.currentAge;
 
-      // Step 3: Loop through every single year and add the growth and new contributions.
       for (let year = 1; year <= yearsToGrow; year++) {
         const annualContribution = inputs.monthlyContribution * 12;
         
-        // Calculate the TFSA (It gets the full return rate, no taxes)
         const tfsaReturn = (tfsaBalance + annualContribution / 2) * inputs.returnRate;
         tfsaBalance += annualContribution + tfsaReturn;
 
-        // Calculate the regular account (It gets a lower return rate because of the tax drag)
         const taxableReturn = (taxableBalance + annualContribution / 2) * taxableReturnRate;
         taxableBalance += annualContribution + taxableReturn;
         
         totalContributed += annualContribution;
 
-        // Save this year's results to our schedule so we can put it in a table later.
         schedule.push({
           year,
           age: inputs.currentAge + year,
@@ -108,7 +90,6 @@
         });
       }
 
-      // Return all the final totals back to the main app.
       return {
         schedule,
         finalTfsa: tfsaBalance,
@@ -119,55 +100,58 @@
       };
     }
 
-    // =====================================================================
-    // SECTION 2: THE USER INTERFACE (UI)
-    // This creates the sliders, text, and visual layout.
-    // =====================================================================
     function TFSACalculator() {
-      // Set the default numbers that show up when the tool first loads.
       const defaultInputs = { 
         currentAge: 25, 
         retirementAge: 65, 
         monthlyContribution: 500, 
         returnRate: 0.07, 
-        income: 75000
+        income: 75000,
+        // FEATURE ADDITION: Add a new piece of state to track if the Auto-Max switch is on or off.
+        autoMax: false 
       };
 
-      // Set up React State to remember the user's choices. 
-      // It also checks the browser's local storage to see if they visited before.
       const [inputs, setInputs] = useState(() => {
-        const savedData = localStorage.getItem('tfsa_user_inputs_v1');
+        const savedData = localStorage.getItem('tfsa_user_inputs_v2');
         if (savedData) {
           try { return JSON.parse(savedData); } catch (e) { }
         }
         return defaultInputs;
       });
 
-      // Every time the user moves a slider, save the new numbers to local storage.
       useEffect(() => {
-        localStorage.setItem('tfsa_user_inputs_v1', JSON.stringify(inputs));
+        localStorage.setItem('tfsa_user_inputs_v2', JSON.stringify(inputs));
       }, [inputs]);
 
-      // Run the math engine using the current slider values. 
-      // useMemo ensures we only run the math when the numbers actually change.
       const projection = useMemo(() => calculateTFSASchedule(inputs), [inputs]);
 
-      // A quick helper to format numbers into Canadian currency (e.g., $1,000).
       const formatCurrency = (val) => 
         new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(val);
 
-      // This triggers whenever a slider is moved, updating the app's state.
       const handleInputChange = (field, value) => {
-        setInputs(prev => ({ ...prev, [field]: value }));
+        setInputs(prev => {
+          const newInputs = { ...prev, [field]: value };
+          
+          // FEATURE ADDITION LOGIC: 
+          // If the user clicks the Auto-Max toggle, force the monthly contribution to be exactly $583.
+          if (field === 'autoMax') {
+            if (value === true) newInputs.monthlyContribution = 583;
+          }
+          
+          // Conversely, if the user decides to manually drag the contribution slider 
+          // WHILE the auto-max toggle is currently turned on, we need to turn the toggle off
+          // so it doesn't look like they are still maxing it out.
+          if (field === 'monthlyContribution' && prev.autoMax) {
+            newInputs.autoMax = false; 
+          }
+          return newInputs;
+        });
       };
 
-      // Resets all sliders back to the default values.
       const handleReset = () => setInputs(defaultInputs);
 
-      // A helper to figure out what percentage of the slider should be colored blue.
       const getSliderFillPct = (value, min, max) => ((value - min) / (max - min)) * 100;
 
-      // Calculate the percentages for the colorful composition bar chart.
       const maxBalance = Math.max(projection.finalTfsa, 1);
       const contributedPct = (projection.totalContributed / maxBalance) * 100;
       const tfsaGrowthPct = ((projection.finalTfsa - projection.totalContributed) / maxBalance) * 100;
@@ -175,13 +159,11 @@
       return (
         <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-10 text-slate-800">
           
-          {/* Main Title Area */}
           <div className="text-center space-y-3 relative">
             <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">The TFSA Snowballer</h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               See the raw mathematical advantage of tax-free compounding versus a standard taxable investment account.
             </p>
-            
             <button 
               onClick={handleReset}
               className="absolute top-0 right-0 mt-2 mr-2 text-sm text-slate-500 hover:text-indigo-600 transition-colors font-medium underline underline-offset-4"
@@ -190,7 +172,6 @@
             </button>
           </div>
 
-          {/* Sliders Container */}
           <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
             
             <div className="flex flex-col justify-start">
@@ -249,7 +230,8 @@
               />
             </div>
 
-            <div className="flex flex-col justify-start col-span-1 md:col-span-2">
+            {/* In order to make room for the new switch, the Income slider was resized to share the row */}
+            <div className="flex flex-col justify-start">
               <label htmlFor="income-slider" className="flex justify-between font-semibold text-slate-800 mb-3">
                 <span>Annual Income (For Tax Drag)</span>
                 <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-sm">{formatCurrency(inputs.income)}</span>
@@ -265,9 +247,25 @@
                 Estimated Tax Drag on Growth: <span className="text-amber-600 font-bold">{projection.effectiveTaxDrag}%</span>
               </p>
             </div>
+
+            {/* FEATURE ADDITION UI: The visual toggle switch layout. It uses Tailwind CSS trickery to look like an iOS switch. */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-2">
+              <div>
+                <h3 className="font-semibold text-slate-900">Max Out TFSA Limit</h3>
+                <p className="text-sm text-slate-600 mt-1">Set contribution to the current $7,000 annual limit ($583/mo).</p>
+              </div>
+              <label htmlFor="automax-toggle" className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input 
+                  id="automax-toggle" type="checkbox" className="sr-only peer"
+                  checked={inputs.autoMax}
+                  onChange={(e) => handleInputChange('autoMax', e.target.checked)}
+                />
+                <div className="w-14 h-7 bg-slate-300 peer-focus:outline-none peer-focus-visible:ring-4 peer-focus-visible:ring-indigo-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+
           </div>
 
-          {/* Three Summary Cards Container */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-indigo-600 text-white p-6 sm:p-8 rounded-2xl shadow-lg shadow-indigo-600/20 transform transition duration-300 hover:-translate-y-1">
               <p className="text-indigo-100 text-sm font-semibold tracking-wide uppercase mb-2">Final TFSA Balance</p>
@@ -283,7 +281,6 @@
             </div>
           </div>
 
-          {/* Colorful Composition Bar */}
           <div className="bg-white border border-slate-200 p-6 sm:p-8 rounded-2xl shadow-sm space-y-6">
             <h3 className="font-bold text-slate-900 text-lg">TFSA Portfolio Composition</h3>
             <div className="w-full h-10 flex rounded-xl overflow-hidden border border-slate-100">
@@ -296,12 +293,10 @@
             </div>
           </div>
 
-          {/* Year-by-Year Table */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
             <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h3 className="font-bold text-slate-900 text-lg">Year-by-Year Growth</h3>
             </div>
-
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="bg-white text-slate-500 font-semibold uppercase tracking-wider text-xs border-b border-slate-200">
