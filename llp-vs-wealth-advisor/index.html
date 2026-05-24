@@ -328,6 +328,25 @@
       letter-spacing: -0.02em;
       line-height: 1;
     }
+    .gap-amount-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+    @media (max-width: 760px) { .gap-amount-stack { align-items: flex-start; } }
+    .gap-pct-chip {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--amber);
+      background: white;
+      border: 1px solid var(--amber-200);
+      padding: 5px 11px;
+      border-radius: 999px;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      box-shadow: var(--shadow-sm);
+    }
 
     /* Real-world equivalents */
     .equivalents-row {
@@ -824,7 +843,10 @@
             <div class="label">The Opportunity Cost Gap</div>
             <div class="label-sub" id="gapSubtitle"></div>
           </div>
-          <div class="amount" id="gapAmount">$0</div>
+          <div class="gap-amount-stack">
+            <div class="amount" id="gapAmount">$0</div>
+            <div class="gap-pct-chip" id="gapPctChip">—</div>
+          </div>
         </div>
         <div class="equivalents-row" id="equivalentChips"></div>
         <div class="equivalents-footnote">Real-world anchors based on rough Canadian averages — see disclaimer below for sources.</div>
@@ -1231,7 +1253,7 @@
     const PLOT_W = CHART_W - CHART_M.left - CHART_M.right;
     const PLOT_H = CHART_H - CHART_M.top - CHART_M.bottom;
 
-    let chartXScale, chartYScale, chartResult;
+    let chartXScale, chartYScale, chartResult; // cached for tooltip
 
     function renderChart(result) {
       chartResult = result;
@@ -1242,6 +1264,7 @@
       chartXScale = xScale;
       chartYScale = yScale;
 
+      // Build line paths
       const untouchedPath = result.yearly
         .map((d, i) => `${i === 0 ? 'M' : 'L'} ${xScale(d.year).toFixed(2)} ${yScale(d.untouchedBalance).toFixed(2)}`)
         .join(' ');
@@ -1249,6 +1272,7 @@
         .map((d, i) => `${i === 0 ? 'M' : 'L'} ${xScale(d.year).toFixed(2)} ${yScale(d.llpBalance).toFixed(2)}`)
         .join(' ');
 
+      // Gap area: untouched forward + LLP reversed + close
       const gapForward = result.yearly
         .map((d, i) => `${i === 0 ? 'M' : 'L'} ${xScale(d.year).toFixed(2)} ${yScale(d.untouchedBalance).toFixed(2)}`)
         .join(' ');
@@ -1257,12 +1281,15 @@
         .join(' ');
       const gapPath = `${gapForward} ${gapBack} Z`;
 
+      // Y ticks
       const tickCount = 4;
       const yTicks = [];
       for (let i = 0; i <= tickCount; i++) yTicks.push((niceMax * i) / tickCount);
 
+      // X ticks
       const xTickYears = [1, 5, 10, 15, 20, 25];
 
+      // Phase markers
       const markers = [
         { year: result.lastSchoolYear, label: `School ends Y${result.lastSchoolYear}` },
         { year: result.repaymentStart, label: `Repayment Y${result.repaymentStart}` },
@@ -1271,27 +1298,34 @@
 
       let svg = `<svg viewBox="0 0 ${CHART_W} ${CHART_H}" class="chart-svg" preserveAspectRatio="xMidYMid meet">`;
 
+      // Y gridlines + labels
       yTicks.forEach(v => {
         const y = yScale(v);
         svg += `<line class="chart-grid" x1="${CHART_M.left}" y1="${y}" x2="${CHART_W - CHART_M.right}" y2="${y}"/>`;
         svg += `<text class="chart-axis-label" x="${CHART_M.left - 10}" y="${y + 4}" text-anchor="end">${fmtShort(v)}</text>`;
       });
 
+      // Phase markers (dashed verticals)
       markers.forEach((m, i) => {
         const x = xScale(m.year);
         svg += `<line class="chart-phase-marker" x1="${x}" y1="${CHART_M.top}" x2="${x}" y2="${CHART_M.top + PLOT_H}"/>`;
+        // Stagger label vertical position so they don't overlap if markers are close
         const labelY = CHART_M.top - 8 - (i % 2) * 12;
         svg += `<text class="chart-marker-label" x="${x}" y="${labelY}" text-anchor="middle">${m.label}</text>`;
       });
 
+      // Gap fill, then lines
       svg += `<path class="chart-gap-fill" d="${gapPath}"/>`;
       svg += `<path class="chart-line untouched" d="${untouchedPath}"/>`;
       svg += `<path class="chart-line llp" d="${llpPath}"/>`;
 
+      // X-axis labels
       xTickYears.forEach(y => {
         const x = xScale(y);
-        svg += `<text class="chart-axis-label" x="${x}" y="${CHART_H - CHART_M.bottom + 20}" text-anchor="middle">Y${y}</text>`;
+        const label = ageOfUser() ? `Y${y}` : `Y${y}`;
+        svg += `<text class="chart-axis-label" x="${x}" y="${CHART_H - CHART_M.bottom + 20}" text-anchor="middle">${label}</text>`;
       });
+      // Age annotations on x-axis if userAge set
       if (ageOfUser()) {
         xTickYears.forEach(y => {
           const x = xScale(y);
@@ -1299,10 +1333,14 @@
         });
       }
 
+      // Hover guide + dots
       svg += `<line class="chart-guide" id="chartGuide" x1="-100" y1="${CHART_M.top}" x2="-100" y2="${CHART_M.top + PLOT_H}"/>`;
       svg += `<circle class="chart-dot untouched" id="chartDotU" cx="-100" cy="-100"/>`;
       svg += `<circle class="chart-dot llp" id="chartDotL" cx="-100" cy="-100"/>`;
+
+      // Invisible overlay catches mouse
       svg += `<rect class="chart-overlay" id="chartOverlay" x="${CHART_M.left}" y="${CHART_M.top}" width="${PLOT_W}" height="${PLOT_H}" fill="transparent"/>`;
+
       svg += `</svg>`;
       $('chartInner').innerHTML = svg;
 
@@ -1344,7 +1382,8 @@
           <div class="tt-row tt-gap"><span>Gap</span><span>${fmt.format(row.diff)}</span></div>
         `;
 
-        const container = $('chartInner').parentElement;
+        // Position tooltip — clamp inside the chart container
+        const container = $('chartInner').parentElement; // .chart-container
         const cRect = container.getBoundingClientRect();
         const ttW = tooltip.offsetWidth || 220;
         let left = clientX - cRect.left + 14;
@@ -1415,17 +1454,26 @@
       renderRates();
       renderGraceOptions();
 
+      // Bars
       const maxVal = Math.max(result.finalUntouched, result.finalLLP, 1);
       $('barUntouched').style.width = `${(result.finalUntouched / maxVal) * 100}%`;
       $('barLLP').style.width = `${(result.finalLLP / maxVal) * 100}%`;
       $('valUntouched').textContent = fmt.format(result.finalUntouched);
       $('valLLP').textContent = fmt.format(result.finalLLP);
 
+      // Gap badge
       $('gapAmount').textContent = fmt.format(result.gap);
       const endpointFull = endpointLabel(HORIZON, false);
       $('gapSubtitle').textContent =
         `The dollars your RRSP would hold at ${endpointFull} if you'd never touched ${fmt.format(result.totalWithdrawn)} for school — minus what it actually holds after a perfect 10-year repayment.`;
 
+      // Gap-as-%-of-tuition chip
+      const pctOfTuition = result.totalWithdrawn > 0
+        ? (result.gap / result.totalWithdrawn) * 100
+        : 0;
+      $('gapPctChip').textContent = `${Math.round(pctOfTuition)}% of the tuition you withdrew`;
+
+      // Summary cards (relabel the untouched card if userAge is set)
       $('sumTuition').textContent = fmt.format(result.totalWithdrawn);
       $('sumUntouched').textContent = fmt.format(result.finalUntouched);
       $('sumUntouchedLabel').textContent = ageOfUser()
