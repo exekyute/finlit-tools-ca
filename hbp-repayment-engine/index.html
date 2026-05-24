@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Canadian HBP Repayment & Refinancing Strategy Engine</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+
+    .number-input {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Print Layout */
+    @media print {
+      body { background-color: white !important; }
+      .no-print { display: none !important; }
+      .shadow-sm, .shadow-lg { box-shadow: none !important; border: 1px solid #e2e8f0; }
+    }
+
+    /* Subtle pulse on the active bracket band */
+    @keyframes softPulse {
+      0%, 100% { box-shadow: inset 0 0 0 2px rgba(79, 70, 229, 0.55); }
+      50%      { box-shadow: inset 0 0 0 2px rgba(79, 70, 229, 0.15); }
+    }
+    .active-bracket-band { animation: softPulse 2.4s ease-in-out infinite; }
+  </style>
+</head>
+<body class="bg-[#f8fafc] min-h-screen py-10">
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react,typescript">
+    const { useState, useMemo, useEffect } = React;
+
+    // ------------------------------------------------------------------
+    // LEGISLATIVE CONSTANTS (2026 CRA RULES)
+    // ------------------------------------------------------------------
+    const HBP_MAX_WITHDRAWAL = 60000;          // Budget 2024 increase from $35k
+    const HBP_REPAYMENT_YEARS = 15;            // 1/15th annual minimum
+    const HBP_GRACE_WINDOW = { startYear: 2022, endYear: 2025, graceYears: 5 };
+    const HBP_STANDARD_GRACE_YEARS = 2;
+    const CURRENT_TAX_YEAR = 2026;
+
+    // Federal brackets (2025 figures, indexed; treat as illustrative for 2026)
+    const FEDERAL_BRACKETS = [
+      { upTo: 57375,    rate: 0.15  },
+      { upTo: 114750,   rate: 0.205 },
+      { upTo: 177882,   rate: 0.26  },
+      { upTo: 253414,   rate: 0.29  },
+      { upTo: Infinity, rate: 0.33  },
+    ];
+
+    // Provincial / territorial brackets — illustrative recent figures
+    const PROVINCIAL_BRACKETS = {
+      ON: { name: 'Ontario', brackets: [
+        { upTo: 51446,    rate: 0.0505 },
+        { upTo: 102894,   rate: 0.0915 },
+        { upTo: 150000,   rate: 0.1116 },
+        { upTo: 220000,   rate: 0.1216 },
+        { upTo: Infinity, rate: 0.1316 },
+      ]},
+      BC: { name: 'British Columbia', brackets: [
+        { upTo: 47937,    rate: 0.0506 },
+        { upTo: 95875,    rate: 0.077  },
+        { upTo: 110076,   rate: 0.105  },
+        { upTo: 133664,   rate: 0.1229 },
+        { upTo: 181232,   rate: 0.147  },
+        { upTo: 252752,   rate: 0.168  },
+        { upTo: Infinity, rate: 0.205  },
+      ]},
+      AB: { name: 'Alberta', brackets: [
+        { upTo: 148269,   rate: 0.10 },
+        { upTo: 177922,   rate: 0.12 },
+        { upTo: 237230,   rate: 0.13 },
+        { upTo: 355845,   rate: 0.14 },
+        { upTo: Infinity, rate: 0.15 },
+      ]},
+      QC: { name: 'Quebec', brackets: [
+        { upTo: 51780,    rate: 0.14   },
+        { upTo: 103545,   rate: 0.19   },
+        { upTo: 126000,   rate: 0.24   },
+        { upTo: Infinity, rate: 0.2575 },
+      ]},
+      MB: { name: 'Manitoba', brackets: [
+        { upTo: 47000,    rate: 0.108  },
+        { upTo: 100000,   rate: 0.1275 },
+        { upTo: Infinity, rate: 0.174  },
+      ]},
+      SK: { name: 'Saskatchewan', brackets: [
+        { upTo: 52057,    rate: 0.105 },
+        { upTo: 148734,   rate: 0.125 },
+        { upTo: Infinity, rate: 0.145 },
+      ]},
+      NS: { name: 'Nova Scotia', brackets: [
+        { upTo: 29590,    rate: 0.0879 },
+        { upTo: 59180,    rate: 0.1495 },
+        { upTo: 93000,    rate: 0.1667 },
+        { upTo: 150000,   rate: 0.175  },
+        { upTo: Infinity, rate: 0.21   },
+      ]},
+      NB: { name: 'New Brunswick', brackets: [
+        { upTo: 49958,    rate: 0.094 },
+        { upTo: 99916,    rate: 0.14  },
+        { upTo: 185064,   rate: 0.16  },
+        { upTo: Infinity, rate: 0.195 },
+      ]},
+      NL: { name: 'Newfoundland and Labrador', brackets: [
+        { upTo: 43198,    rate: 0.087 },
+        { upTo: 86395,    rate: 0.145 },
+        { upTo: 154244,   rate: 0.158 },
+        { upTo: 215943,   rate: 0.178 },
+        { upTo: 275870,   rate: 0.198 },
+        { upTo: Infinity, rate: 0.218 },
+      ]},
+      PE: { name: 'Prince Edward Island', brackets: [
+        { upTo: 32656,    rate: 0.0965 },
+        { upTo: 64313,    rate: 0.1363 },
+        { upTo: 105000,   rate: 0.1665 },
+        { upTo: 140000,   rate: 0.18   },
+        { upTo: Infinity, rate: 0.1875 },
+      ]},
+      YT: { name: 'Yukon', brackets: [
+        { upTo: 57375,    rate: 0.064 },
+        { upTo: 114750,   rate: 0.09  },
+        { upTo: 177882,   rate: 0.109 },
+        { upTo: 500000,   rate: 0.128 },
+        { upTo: Infinity, rate: 0.15  },
+      ]},
+      NT: { name: 'Northwest Territories', brackets: [
+        { upTo: 51964,    rate: 0.059  },
+        { upTo: 103930,   rate: 0.086  },
+        { upTo: 168967,   rate: 0.122  },
+        { upTo: Infinity, rate: 0.1405 },
+      ]},
+      NU: { name: 'Nunavut', brackets: [
+        { upTo: 54707,    rate: 0.04  },
+        { upTo: 109413,   rate: 0.07  },
+        { upTo: 177881,   rate: 0.09  },
+        { upTo: Infinity, rate: 0.115 },
+      ]},
+    };
+
+    const INCOME_ARCHETYPES = [
+      { id: 'low',  label: 'Early Career',  bracket: 'Lower Bracket',   income: 45000,  color: '#fbbf24', severityLabel: 'Mild',    description: '~$45,000 Income' },
+      { id: 'mid',  label: 'Mid-Career',    bracket: 'Middle Bracket',  income: 85000,  color: '#f97316', severityLabel: 'Notable', description: '~$85,000 Income' },
+      { id: 'high', label: 'Peak Earnings', bracket: 'High Bracket',    income: 150000, color: '#dc2626', severityLabel: 'Severe',  description: '~$150,000 Income' },
+    ];
+
+    // ------------------------------------------------------------------
+    // MATH
+    // ------------------------------------------------------------------
+    function getRateAt(brackets, income) {
+      for (const b of brackets) {
+        if (income <= b.upTo) return b.rate;
+      }
+      return brackets[brackets.length - 1].rate;
+    }
+
+    function getCombinedMarginalRate(income, provinceCode) {
+      const fed  = getRateAt(FEDERAL_BRACKETS, income);
+      const prov = getRateAt(PROVINCIAL_BRACKETS[provinceCode].brackets, income);
+      return fed + prov;
+    }
+
+    function getCombinedThresholds(provinceCode) {
+      const set = new Set();
+      FEDERAL_BRACKETS.forEach(b => { if (b.upTo !== Infinity) set.add(b.upTo); });
+      PROVINCIAL_BRACKETS[provinceCode].brackets.forEach(b => { if (b.upTo !== Infinity) set.add(b.upTo); });
+      return [...set].sort((a, b) => a - b);
+    }
+
+    // Walk the income range [baseIncome, baseIncome+additional], summing tax
+    // band by band so bracket-crossing is accurate.
+    function computeStackedTax(baseIncome, additional, provinceCode) {
+      if (additional <= 0) return 0;
+      const thresholds = [...getCombinedThresholds(provinceCode), Infinity];
+      const end = baseIncome + additional;
+      let cursor = baseIncome;
+      let tax = 0;
+      for (const t of thresholds) {
+        if (cursor >= end) break;
+        if (t <= cursor) continue;
+        const sliceEnd = Math.min(t, end);
+        // Rate slightly above cursor avoids landing exactly on a threshold
+        const rate = getCombinedMarginalRate(cursor + 0.01, provinceCode);
+        tax += (sliceEnd - cursor) * rate;
+        cursor = sliceEnd;
+      }
+      return tax;
+    }
+
+    // Returns the slices of the missed-repayment block, each with start/end income,
+    // height percentage of the thermometer, and combined rate — used to render
+    // bracket-creep severity in the visual.
+    function getStackSlices(baseIncome, additional, provinceCode, thermMax) {
+      const slices = [];
+      if (additional <= 0) return slices;
+      const thresholds = [...getCombinedThresholds(provinceCode), Infinity];
+      const end = baseIncome + additional;
+      let cursor = baseIncome;
+      for (const t of thresholds) {
+        if (cursor >= end) break;
+        if (t <= cursor) continue;
+        const sliceEnd = Math.min(t, end);
+        const rate = getCombinedMarginalRate(cursor + 0.01, provinceCode);
+        slices.push({
+          start: cursor,
+          end: sliceEnd,
+          rate,
+          heightPct: ((sliceEnd - cursor) / thermMax) * 100,
+        });
+        cursor = sliceEnd;
+      }
+      return slices;
+    }
+
+    function getGraceStatus(withdrawalYear, currentYear) {
+      const inExtendedWindow = withdrawalYear >= HBP_GRACE_WINDOW.startYear && withdrawalYear <= HBP_GRACE_WINDOW.endYear;
+      const graceYears = inExtendedWindow ? HBP_GRACE_WINDOW.graceYears : HBP_STANDARD_GRACE_YEARS;
+      const firstRepaymentYear = withdrawalYear + graceYears + 1;
+      const inGrace = currentYear < firstRepaymentYear;
+      return { inExtendedWindow, graceYears, firstRepaymentYear, inGrace };
+    }
+
+    // ------------------------------------------------------------------
+    // SEVERITY COLOR FOR STACK SLICES (bracket creep)
+    // Maps a combined marginal rate to a color from the archetype's base
+    // shade up to crimson, so crossing into a higher bracket *looks* worse.
+    // ------------------------------------------------------------------
+    function getSliceColor(rate) {
+      if (rate < 0.25) return '#fbbf24';      // amber-400
+      if (rate < 0.33) return '#f59e0b';      // amber-500
+      if (rate < 0.40) return '#f97316';      // orange-500
+      if (rate < 0.46) return '#ea580c';      // orange-600
+      if (rate < 0.50) return '#dc2626';      // red-600
+      return '#991b1b';                       // red-800
+    }
+
+    // ------------------------------------------------------------------
+    // COMPONENT
+    // ------------------------------------------------------------------
+    function HBPEngine() {
+      const defaultInputs = {
+        outstandingBalance: 30000,
+        archetypeId: 'mid',
+        provinceCode: 'ON',
+        repaymentChoice: 'pay',
+        withdrawalYear: 2021, // past grace by default
+      };
+
+      const [inputs, setInputs] = useState(() => {
+        const saved = localStorage.getItem('hbp_engine_inputs_v1');
+        if (saved) {
+          try { return { ...defaultInputs, ...JSON.parse(saved) }; } catch (e) {}
+        }
+        return defaultInputs;
+      });
+
+      useEffect(() => {
+        localStorage.setItem('hbp_engine_inputs_v1', JSON.stringify(inputs));
+      }, [inputs]);
+
+      const archetype = INCOME_ARCHETYPES.find(a => a.id === inputs.archetypeId);
+      const province = PROVINCIAL_BRACKETS[inputs.provinceCode];
+      const grace = getGraceStatus(inputs.withdrawalYear, CURRENT_TAX_YEAR);
+
+      const calc = useMemo(() => {
+        const annualMin = inputs.outstandingBalance / HBP_REPAYMENT_YEARS;
+        const marginalRate = getCombinedMarginalRate(archetype.income, inputs.provinceCode);
+        const taxOnSkip = computeStackedTax(archetype.income, annualMin, inputs.provinceCode);
+        const effectiveRate = annualMin > 0 ? taxOnSkip / annualMin : marginalRate;
+        return { annualMin, marginalRate, taxOnSkip, effectiveRate };
+      }, [inputs.outstandingBalance, archetype.income, inputs.provinceCode]);
+
+      const handleChange = (field, value) => setInputs(prev => ({ ...prev, [field]: value }));
+      const handleReset  = () => setInputs(defaultInputs);
+
+      const formatCurrency = (val) =>
+        new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(val);
+      const formatCurrencyPrecise = (val) =>
+        new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 2 }).format(val);
+
+      // Thermometer scale
+      const THERM_MAX = 260000;
+      const baseHeightPct = Math.min(100, (archetype.income / THERM_MAX) * 100);
+      const stackSlices = getStackSlices(archetype.income, calc.annualMin, inputs.provinceCode, THERM_MAX);
+
+      // Bracket bands for thermometer background
+      const bandThresholds = useMemo(() => {
+        const set = new Set([0]);
+        FEDERAL_BRACKETS.forEach(b => { if (b.upTo !== Infinity && b.upTo <= THERM_MAX) set.add(b.upTo); });
+        province.brackets.forEach(b => { if (b.upTo !== Infinity && b.upTo <= THERM_MAX) set.add(b.upTo); });
+        set.add(THERM_MAX);
+        return [...set].sort((a, b) => a - b);
+      }, [inputs.provinceCode]);
+
+      const bands = useMemo(() => {
+        const out = [];
+        for (let i = 0; i < bandThresholds.length - 1; i++) {
+          const low  = bandThresholds[i];
+          const high = bandThresholds[i + 1];
+          const rate = getCombinedMarginalRate(low + 0.01, inputs.provinceCode);
+          const isActive = archetype.income >= low && archetype.income < high;
+          out.push({
+            low, high, rate, isActive,
+            heightPct: ((high - low) / THERM_MAX) * 100,
+            bottomPct: (low / THERM_MAX) * 100,
+          });
+        }
+        return out;
+      }, [inputs.provinceCode, archetype.income]);
+
+      const isSkip = inputs.repaymentChoice === 'skip';
+
+      return (
+        <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 text-slate-800">
+
+          {/* HEADER */}
+          <div className="text-center space-y-3">
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">The HBP Repayment &amp; Refinancing Strategy Engine</h1>
+            <p className="text-lg text-slate-600 max-w-3xl mx-auto">
+              Quantify what really happens when you skip your annual Home Buyers' Plan repayment.
+              See the cash you'd keep now, the tax bill due next April, and the RRSP room you'd permanently lose.
+            </p>
+          </div>
+
+          {/* EXPLANATORY CARDS */}
+          <div className="no-print grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            <div className="bg-white border border-slate-200 p-5 sm:p-6 rounded-2xl shadow-sm text-slate-700 leading-relaxed flex flex-col justify-center">
+              <h2 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                How to use this tool
+              </h2>
+              <p className="text-sm">
+                Type in your outstanding HBP balance, pick the income tier that best matches your situation, and choose your province.
+                Then flip the central toggle. The thermometer shows where the skipped repayment lands on your tax bracket ladder,
+                and the two cards below quantify exactly what happens in cash, in tax, and in lost RRSP room.
+              </p>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 p-5 sm:p-6 rounded-2xl shadow-sm text-amber-900 leading-relaxed">
+              <h2 className="font-bold text-amber-800 mb-2 flex items-center gap-2">
+                <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Finding your numbers safely
+              </h2>
+              <div className="text-sm space-y-3">
+                <p>
+                  <strong>1. Find your exact HBP balance:</strong> Log in to <a href="https://www.canada.ca/en/revenue-agency/services/e-services/digital-services-individuals/account-individuals.html" target="_blank" className="underline font-semibold hover:text-amber-700">CRA My Account</a> and check your HBP statement of account for the current outstanding balance and your required minimum.
+                </p>
+                <p>
+                  <strong>2. Mind the grace period:</strong> Withdrawals between <strong>Jan 1, 2022 – Dec 31, 2025</strong> get a 5-year repayment grace (Budget 2024 extension). Older or newer withdrawals revert to the standard 2-year grace.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* INPUT ZONE */}
+          <div className="no-print bg-white p-6 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-200 space-y-8">
+
+            <div className="flex items-center justify-between -mb-2">
+              <h2 className="font-bold text-slate-900 text-lg">Your Inputs</h2>
+              <button
+                onClick={handleReset}
+                className="text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-slate-50"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Reset all inputs
+              </button>
+            </div>
+
+            {/* Numeric inputs row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="flex flex-col">
+                <label htmlFor="balance-input" className="font-semibold text-slate-800 mb-2">Total Outstanding HBP Balance</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold">$</span>
+                  <input
+                    id="balance-input" type="number" min="0" max={HBP_MAX_WITHDRAWAL} step="500"
+                    value={inputs.outstandingBalance}
+                    onChange={(e) => handleChange('outstandingBalance', Math.max(0, Math.min(HBP_MAX_WITHDRAWAL, Number(e.target.value))))}
+                    className="number-input w-full pl-8 pr-4 py-3 border border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition"
+                  />
+                </div>
+                <p className="text-xs text-slate-500 mt-2">Max individual limit: {formatCurrency(HBP_MAX_WITHDRAWAL)} (Budget 2024)</p>
+              </div>
+
+              <div className="flex flex-col">
+                <label htmlFor="year-input" className="font-semibold text-slate-800 mb-2">HBP Withdrawal Year</label>
+                <input
+                  id="year-input" type="number" min="2000" max={CURRENT_TAX_YEAR} step="1"
+                  value={inputs.withdrawalYear}
+                  onChange={(e) => handleChange('withdrawalYear', Number(e.target.value))}
+                  className="number-input w-full px-4 py-3 border border-slate-300 rounded-xl text-lg font-bold text-slate-900 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition"
+                />
+                <p className="text-xs text-slate-500 mt-2">
+                  {grace.inExtendedWindow
+                    ? <>5-year grace applies. Repayment begins <strong className="text-amber-700">{grace.firstRepaymentYear}</strong>.</>
+                    : <>2-year grace applies. Repayment begins <strong>{grace.firstRepaymentYear}</strong>.</>}
+                </p>
+              </div>
+
+              <div className="flex flex-col">
+                <label htmlFor="province-input" className="font-semibold text-slate-800 mb-2">Province / Territory</label>
+                <select
+                  id="province-input"
+                  value={inputs.provinceCode}
+                  onChange={(e) => handleChange('provinceCode', e.target.value)}
+                  className="number-input w-full px-4 py-3 border border-slate-300 rounded-xl text-lg font-bold text-slate-900 bg-white focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition"
+                >
+                  {Object.entries(PROVINCIAL_BRACKETS).map(([code, p]) =>
+                    <option key={code} value={code}>{p.name}</option>
+                  )}
+                </select>
+                <p className="text-xs text-slate-500 mt-2">Drives provincial tax rates added to federal.</p>
+              </div>
+            </div>
+
+            {/* Archetype buttons */}
+            <div>
+              <label className="font-semibold text-slate-800 mb-3 block">Income Archetype</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {INCOME_ARCHETYPES.map(a => {
+                  const active = a.id === inputs.archetypeId;
+                  return (
+                    <button
+                      key={a.id}
+                      onClick={() => handleChange('archetypeId', a.id)}
+                      className={`text-left p-4 rounded-xl border-2 transition-all font-semibold ${
+                        active
+                          ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                          : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="text-sm">{a.label}</div>
+                      <div className={`text-xs mt-1 ${active ? 'text-indigo-100' : 'text-slate-500'}`}>{a.bracket} ({a.description})</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Binary Toggle Switch */}
+            <div>
+              <label className="font-semibold text-slate-800 mb-3 block">Your Decision This April</label>
+              <div className="grid grid-cols-2 p-1.5 bg-slate-100 rounded-2xl gap-1.5">
+                <button
+                  onClick={() => handleChange('repaymentChoice', 'pay')}
+                  className={`py-4 px-4 rounded-xl font-bold text-base transition-all ${
+                    !isSkip
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 scale-[1.01]'
+                      : 'bg-transparent text-slate-600 hover:bg-white/60'
+                  }`}
+                >
+                  Pay Required Minimum
+                </button>
+                <button
+                  onClick={() => handleChange('repaymentChoice', 'skip')}
+                  className={`py-4 px-4 rounded-xl font-bold text-base transition-all ${
+                    isSkip
+                      ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 scale-[1.01]'
+                      : 'bg-transparent text-slate-600 hover:bg-white/60'
+                  }`}
+                >
+                  Skip Repayment Entirely
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* THERMOMETER + ARCHETYPE STAT */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            {/* Thermometer */}
+            <div className="lg:col-span-2 bg-white border border-slate-200 p-6 sm:p-8 rounded-2xl shadow-sm">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-lg">Tax Bracket Thermometer</h3>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Combined federal + provincial brackets. The {isSkip ? 'colored block on top' : 'filled column'} shows where {isSkip ? 'your skipped repayment lands' : 'your income sits'}.
+                  </p>
+                </div>
+                {isSkip && (
+                  <div className="text-right">
+                    <div className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Severity</div>
+                    <div className="text-base font-bold" style={{ color: archetype.color }}>{archetype.severityLabel}</div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-4">
+                {/* The vertical column */}
+                <div className="relative w-32 h-[500px] rounded-xl bg-slate-50 border border-slate-200 overflow-hidden">
+
+                  {/* Bracket bands as background */}
+                  {bands.map((b, i) => (
+                    <div
+                      key={i}
+                      className={`absolute left-0 right-0 border-t border-slate-200 ${b.isActive ? 'active-bracket-band' : ''}`}
+                      style={{
+                        bottom: `${b.bottomPct}%`,
+                        height: `${b.heightPct}%`,
+                        background: `rgba(148, 163, 184, ${0.04 + i * 0.04})`,
+                      }}
+                    />
+                  ))}
+
+                  {/* Baseline income column */}
+                  <div
+                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-slate-700 to-slate-500 transition-all duration-500"
+                    style={{ height: `${baseHeightPct}%` }}
+                  />
+
+                  {/* Stacked missed-repayment block (only on skip) — slices positioned from baseline upward */}
+                  {isSkip && stackSlices.length > 0 && (() => {
+                    let cum = 0;
+                    return stackSlices.map((s, i) => {
+                      const sliceBottomPct = baseHeightPct + cum;
+                      cum += s.heightPct;
+                      return (
+                        <div
+                          key={i}
+                          className="absolute left-0 right-0 transition-all duration-500"
+                          style={{
+                            bottom: `${sliceBottomPct}%`,
+                            height: `${s.heightPct}%`,
+                            background: getSliceColor(s.rate),
+                            borderTop: i > 0 ? '1px dashed rgba(255,255,255,0.6)' : 'none',
+                          }}
+                          title={`${formatCurrency(s.start)}–${formatCurrency(s.end)} @ ${(s.rate * 100).toFixed(1)}%`}
+                        />
+                      );
+                    });
+                  })()}
+                </div>
+
+                {/* Right-side labels — de-clustered to prevent squishing */}
+                <div className="relative flex-1 h-[500px]">
+                  {(() => {
+                    const MIN_GAP_PCT = 3.2;
+                    const stackTopPct = baseHeightPct + (calc.annualMin / THERM_MAX) * 100;
+
+                    // Priority markers always rendered
+                    const priorityMarkers = [];
+                    if (isSkip && stackSlices.length > 0 && (stackTopPct - baseHeightPct) >= MIN_GAP_PCT) {
+                      priorityMarkers.push({
+                        topPct: baseHeightPct,
+                        label: `Your income: ${formatCurrency(archetype.income)}`,
+                        color: '#0f172a',
+                      });
+                      priorityMarkers.push({
+                        topPct: stackTopPct,
+                        label: `+ ${formatCurrency(calc.annualMin)} taxable`,
+                        color: archetype.color,
+                      });
+                    } else if (isSkip && stackSlices.length > 0) {
+                      // Stack too small to label separately — show one combined marker
+                      priorityMarkers.push({
+                        topPct: baseHeightPct,
+                        label: `Income ${formatCurrency(archetype.income)} + ${formatCurrency(calc.annualMin)} taxable`,
+                        color: archetype.color,
+                      });
+                    } else {
+                      priorityMarkers.push({
+                        topPct: baseHeightPct,
+                        label: `Your income: ${formatCurrency(archetype.income)}`,
+                        color: '#0f172a',
+                      });
+                    }
+
+                    // Bracket labels (drop ones at the very top edge and ones colliding with priority markers)
+                    const bracketLabels = bands
+                      .map(b => ({
+                        topPct: b.bottomPct + b.heightPct,
+                        value: b.high >= THERM_MAX ? `${formatCurrency(b.low)}+` : formatCurrency(b.high),
+                        rate: b.rate,
+                      }))
+                      .filter(b => b.topPct < 99 && b.topPct > 1)
+                      .filter(b => !priorityMarkers.some(p => Math.abs(p.topPct - b.topPct) < MIN_GAP_PCT));
+
+                    // Cluster bracket labels that are too close together
+                    const sorted = [...bracketLabels].sort((a, b) => a.topPct - b.topPct);
+                    const clusters = [];
+                    for (const item of sorted) {
+                      const last = clusters[clusters.length - 1];
+                      if (last && (item.topPct - last.maxTopPct) < MIN_GAP_PCT) {
+                        last.items.push(item);
+                        last.maxTopPct = item.topPct;
+                      } else {
+                        clusters.push({ items: [item], maxTopPct: item.topPct });
+                      }
+                    }
+
+                    return (
+                      <>
+                        {clusters.map((c, i) => {
+                          const midPct = c.items.reduce((acc, it) => acc + it.topPct, 0) / c.items.length;
+                          const valueText = c.items.map(it => it.value).join(' / ');
+                          const rateText = c.items.length === 1
+                            ? `${(c.items[0].rate * 100).toFixed(1)}%`
+                            : `${(c.items[0].rate * 100).toFixed(1)}–${(c.items[c.items.length - 1].rate * 100).toFixed(1)}%`;
+                          return (
+                            <div
+                              key={`b-${i}`}
+                              className="absolute left-0 right-0 flex items-center text-xs"
+                              style={{ bottom: `${midPct}%`, transform: 'translateY(50%)' }}
+                            >
+                              <div className="w-3 h-px bg-slate-300 mr-2" />
+                              <span className="text-slate-600 font-medium">{valueText}</span>
+                              <span className="text-slate-400 ml-2">({rateText})</span>
+                            </div>
+                          );
+                        })}
+                        {priorityMarkers.map((p, i) => (
+                          <div
+                            key={`p-${i}`}
+                            className="absolute left-0 right-0 flex items-center text-xs"
+                            style={{ bottom: `${p.topPct}%`, transform: 'translateY(50%)' }}
+                          >
+                            <div className="w-3 h-px mr-2" style={{ background: p.color }} />
+                            <span className="font-bold" style={{ color: p.color }}>{p.label}</span>
+                          </div>
+                        ))}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {isSkip && stackSlices.length > 1 && (
+                <p className="text-xs text-amber-700 mt-4 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <strong>Bracket creep detected:</strong> the skipped repayment crosses {stackSlices.length - 1} bracket
+                  threshold{stackSlices.length - 1 === 1 ? '' : 's'}. The effective tax rate on the missed amount
+                  is <strong>{(calc.effectiveRate * 100).toFixed(1)}%</strong>, higher than your starting marginal rate.
+                </p>
+              )}
+            </div>
+
+            {/* Side stat card */}
+            <div className="flex flex-col gap-4">
+              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Annual Required Minimum (1/15)</p>
+                <p className="text-3xl font-extrabold text-slate-900 mt-2">{formatCurrencyPrecise(calc.annualMin)}</p>
+                <p className="text-xs text-slate-500 mt-2">
+                  = {formatCurrency(inputs.outstandingBalance)} ÷ {HBP_REPAYMENT_YEARS}
+                </p>
+              </div>
+              <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+                <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Combined Marginal Rate</p>
+                <p className="text-3xl font-extrabold text-slate-900 mt-2">{(calc.marginalRate * 100).toFixed(1)}%</p>
+                <p className="text-xs text-slate-500 mt-2">
+                  Federal + {province.name} at {formatCurrency(archetype.income)}
+                </p>
+              </div>
+              {grace.inGrace && (
+                <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl shadow-sm">
+                  <p className="text-xs uppercase tracking-wider text-emerald-700 font-bold">Currently In Grace</p>
+                  <p className="text-sm text-emerald-900 mt-2">
+                    No minimum is required yet. Your first repayment year is <strong>{grace.firstRepaymentYear}</strong>.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* TWO OUTCOME CARDS */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Card A — Pay */}
+            <div className={`rounded-2xl shadow-sm border transition-all duration-300 ${
+              !isSkip
+                ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20 -translate-y-1'
+                : 'bg-white border-slate-200 text-slate-700 opacity-70'
+            }`}>
+              <div className="p-6 sm:p-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className={`w-3 h-3 rounded-full ${!isSkip ? 'bg-white' : 'bg-indigo-600'}`} />
+                  <p className={`text-xs uppercase tracking-wider font-bold ${!isSkip ? 'text-indigo-100' : 'text-indigo-600'}`}>
+                    Scenario A — Pay Minimum
+                  </p>
+                </div>
+                <h3 className={`text-2xl font-extrabold mb-6 ${!isSkip ? 'text-white' : 'text-slate-900'}`}>You stay on the rails.</h3>
+
+                <dl className="space-y-4">
+                  <div>
+                    <dt className={`text-xs uppercase font-semibold ${!isSkip ? 'text-indigo-200' : 'text-slate-500'}`}>Cash Out-of-Pocket</dt>
+                    <dd className={`text-2xl font-extrabold ${!isSkip ? 'text-white' : 'text-slate-900'}`}>{formatCurrencyPrecise(calc.annualMin)}</dd>
+                  </div>
+                  <div>
+                    <dt className={`text-xs uppercase font-semibold ${!isSkip ? 'text-indigo-200' : 'text-slate-500'}`}>CRA Tax Penalty (Line 12900)</dt>
+                    <dd className={`text-2xl font-extrabold ${!isSkip ? 'text-white' : 'text-slate-900'}`}>$0</dd>
+                  </div>
+                  <div>
+                    <dt className={`text-xs uppercase font-semibold ${!isSkip ? 'text-indigo-200' : 'text-slate-500'}`}>Contribution Room Preserved</dt>
+                    <dd className={`text-2xl font-extrabold ${!isSkip ? 'text-white' : 'text-slate-900'}`}>100%</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            {/* Card B — Skip */}
+            <div className={`rounded-2xl shadow-sm border transition-all duration-300 ${
+              isSkip
+                ? 'bg-red-600 border-red-600 text-white shadow-lg shadow-red-600/20 -translate-y-1'
+                : 'bg-white border-slate-200 text-slate-700 opacity-70'
+            }`}>
+              <div className="p-6 sm:p-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className={`w-3 h-3 rounded-full ${isSkip ? 'bg-white' : 'bg-red-600'}`} />
+                  <p className={`text-xs uppercase tracking-wider font-bold ${isSkip ? 'text-red-100' : 'text-red-600'}`}>
+                    Scenario B — Skip Repayment
+                  </p>
+                </div>
+                <h3 className={`text-2xl font-extrabold mb-6 ${isSkip ? 'text-white' : 'text-slate-900'}`}>You absorb the tax hit.</h3>
+
+                <dl className="space-y-4">
+                  <div>
+                    <dt className={`text-xs uppercase font-semibold ${isSkip ? 'text-red-100' : 'text-slate-500'}`}>Immediate Cash Kept</dt>
+                    <dd className={`text-2xl font-extrabold ${isSkip ? 'text-white' : 'text-slate-900'}`}>+{formatCurrencyPrecise(calc.annualMin)}</dd>
+                  </div>
+                  <div>
+                    <dt className={`text-xs uppercase font-semibold ${isSkip ? 'text-red-100' : 'text-slate-500'}`}>Next April Tax Bill Increase</dt>
+                    <dd className={`text-2xl font-extrabold ${isSkip ? 'text-white' : 'text-slate-900'}`}>−{formatCurrencyPrecise(calc.taxOnSkip)}</dd>
+                    <p className={`text-xs mt-1 ${isSkip ? 'text-red-100' : 'text-slate-500'}`}>
+                      Effective rate {(calc.effectiveRate * 100).toFixed(1)}% on the missed amount.
+                    </p>
+                  </div>
+                  <div>
+                    <dt className={`text-xs uppercase font-semibold ${isSkip ? 'text-red-100' : 'text-slate-500'}`}>Permanent RRSP Room Lost</dt>
+                    <dd className={`text-2xl font-extrabold ${isSkip ? 'text-white' : 'text-slate-900'}`}>−{formatCurrencyPrecise(calc.annualMin)}</dd>
+                    <p className={`text-xs mt-1 ${isSkip ? 'text-red-100' : 'text-slate-500'}`}>This room cannot be recovered.</p>
+                  </div>
+                </dl>
+              </div>
+            </div>
+          </div>
+
+          {/* EDUCATIONAL NOTE */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8 space-y-3">
+            <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
+              <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              How the tax hit actually happens
+            </h3>
+            <p className="text-sm text-slate-700 leading-relaxed">
+              On your T1 General return, any HBP repayment shortfall flows through your <strong>Schedule 7</strong> calculation
+              and lands on <strong>Line 12900 — RRSP income</strong>. The CRA treats the missed amount as if you withdrew it
+              fresh from your RRSP that year — it's added to your taxable income and taxed at your full combined marginal rate.
+            </p>
+            <p className="text-sm text-slate-700 leading-relaxed">
+              The harder pill: <strong>the RRSP contribution room you originally used for that HBP dollar is gone for good.</strong>{' '}
+              Unlike a TFSA withdrawal, HBP contribution room is not restored when you fail to repay. You also can't deduct the
+              missed amount as a fresh RRSP contribution — there's nothing to deduct, because it was already deducted years ago
+              when you first put the money in.
+            </p>
+          </div>
+
+          {/* DISCLAIMER */}
+          <div className="text-xs text-slate-500 text-center max-w-3xl mx-auto leading-relaxed">
+            <strong>Disclaimer:</strong> Federal and provincial tax brackets shift annually with indexation, and grace-period rules
+            are subject to federal budgetary changes. This tool uses recent published brackets as a 2026 illustration only and
+            is not tax advice. Combined marginal rates ignore surtaxes, the basic personal amount, refundable/non-refundable credits,
+            and Quebec's abatement. Verify your actual HBP balance and required minimum repayment in CRA My Account, and consult a
+            qualified accountant or CFP before deciding to skip a repayment.
+          </div>
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<HBPEngine />);
+  </script>
+</body>
+</html>
