@@ -123,7 +123,37 @@
     .input-prefix-emerald { color: #047857; }
 
     /* ---------- ROLLERCOASTER ---------- */
-    .chart-wrap svg { display: block; width: 100%; height: auto; }
+    .chart-wrap svg { display: block; width: 100%; height: auto; cursor: crosshair; touch-action: none; }
+    .chart-hint { font-size: 12px; color: #94a3b8; text-align: center; margin-top: 8px; }
+    .chart-hint kbd {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      color: #475569;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* ---------- RESET LINK ---------- */
+    .reset-link {
+      position: absolute;
+      top: 0; right: 0;
+      margin-top: 2px;
+      font-size: 13px;
+      color: #94a3b8;
+      font-weight: 500;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      cursor: pointer;
+      transition: color .2s;
+      background: none;
+      border: none;
+      padding: 4px 6px;
+    }
+    .reset-link:hover { color: #4f46e5; }
 
     /* ---------- LEAKY PIPELINE ---------- */
     .pipe-row { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
@@ -205,11 +235,12 @@
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
     <!-- ============================ HERO ============================ -->
-    <header class="text-center space-y-3">
+    <header class="text-center space-y-3 relative">
       <h1 class="text-4xl font-extrabold tracking-tight text-slate-900">The Canadian Benefit Clawback Radar</h1>
       <p class="text-lg text-slate-600 max-w-2xl mx-auto">
         Earning your next dollar isn't always worth a dollar. See exactly where Canada's income tax + non-taxable benefit clawbacks combine into a steep, hidden tax on low and middle incomes.
       </p>
+      <button id="reset-btn" class="reset-link no-print" title="Reset all inputs to defaults">Reset Defaults</button>
     </header>
 
     <!-- ============================ EXPLAINER CARDS ============================ -->
@@ -332,6 +363,9 @@
       </div>
       <div class="chart-wrap">
         <svg id="rollercoaster" viewBox="0 0 800 380" preserveAspectRatio="none" aria-label="Take-home rate curve"></svg>
+        <div class="chart-hint no-print">
+          <kbd>Hover</kbd> or <kbd>tap</kbd> anywhere on the curve to inspect that income point. <kbd>Click</kbd> to set it as your bracket.
+        </div>
       </div>
     </section>
 
@@ -459,7 +493,7 @@
           <strong class="text-slate-800">Legal Disclaimer:</strong> This application is intended solely for financial literacy illustration and educational purposes. It does not constitute formal accounting, tax filing, or legal financial planning advice. True calculation metrics rely on complex variables, including provincial low-income tax reductions, nested credits, shared custody arrangements, and marital status changes. Always cross-verify data models with official CRA schedules, Service Canada tables, or a Certified Professional Accountant (CPA) before making significant employment or income shifts.
         </p>
       </details>
-      <div class="text-[11px] text-slate-400 mt-4 tracking-wider uppercase">© Finlit Tools · Clawback Radar v2 · 2026 Parameter Frame</div>
+      <div class="text-[11px] text-slate-400 mt-4 tracking-wider uppercase">© Finlit Tools · Clawback Radar v3 · 2026 Parameter Frame</div>
     </footer>
 
   </div>
@@ -677,7 +711,7 @@
       'working-family-2-mixed': { isSenior: false, kidsUnder6: 1, kids6to17: 1 },
       'senior-gis':             { isSenior: true,  kidsUnder6: 0, kids6to17: 0 }
     };
-    const state = {
+    const DEFAULT_STATE = {
       profile: 'single-parent-1-young',
       isSenior: false,
       kidsUnder6: 1,
@@ -686,6 +720,32 @@
       province: 'ON',
       rrsp: 0
     };
+    const state = Object.assign({}, DEFAULT_STATE);
+    // hoverIncome is transient (not persisted): null = not scrubbing, otherwise the income at the cursor
+    let hoverIncome = null;
+    function getActiveIncome() { return hoverIncome !== null ? hoverIncome : state.bracket; }
+
+    // ---- localStorage persistence (matches tfsa-snowballer / resp-calc family pattern) ----
+    const STORAGE_KEY = 'clawback_radar_state_v3';
+    function persistState() {
+      try {
+        const persisted = {};
+        Object.keys(DEFAULT_STATE).forEach(k => { persisted[k] = state[k]; });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
+      } catch (e) { /* private mode / quota — silently ignore */ }
+    }
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return false;
+        Object.keys(DEFAULT_STATE).forEach(k => {
+          if (k in parsed && typeof parsed[k] === typeof DEFAULT_STATE[k]) state[k] = parsed[k];
+        });
+        return true;
+      } catch (e) { return false; }
+    }
 
     function getEffectiveProfile() {
       if (state.isSenior) return { type: 'senior', label: 'a single senior receiving GIS' };
@@ -968,7 +1028,7 @@
 
     function placeMarker(xMax, points) {
       const marker = document.getElementById('bracket-marker');
-      const bx = state.bracket;
+      const bx = getActiveIncome();
       if (bx > xMax) { marker.style.display = 'none'; return; }
       marker.style.display = '';
       let y = 1;
@@ -983,8 +1043,12 @@
       marker.querySelector('line').setAttribute('x1', cx);
       marker.querySelector('line').setAttribute('x2', cx);
       const circs = marker.querySelectorAll('circle');
+      // Outer ring slightly larger + lighter color when scrubbing (visual cue for "uncommitted")
+      const isHovering = hoverIncome !== null;
       circs[0].setAttribute('cx', cx); circs[0].setAttribute('cy', cy);
+      circs[0].setAttribute('stroke', isHovering ? '#818cf8' : '#4f46e5');
       circs[1].setAttribute('cx', cx); circs[1].setAttribute('cy', cy);
+      circs[1].setAttribute('fill', isHovering ? '#818cf8' : '#4f46e5');
     }
 
     function placeCliffLabel(points, xMax) {
@@ -1009,20 +1073,24 @@
       const g = document.getElementById('annotation');
       g.innerHTML = '';
       const profile = getEffectiveProfile();
-      const rate = keepRateAt(state.bracket, state.rrsp, profile, state.province, 1000);
+      const income = getActiveIncome();
+      const rate = keepRateAt(income, state.rrsp, profile, state.province, 1000);
       const keptCents = Math.round(Math.max(0, Math.min(1, rate)) * 100);
 
-      const bx = xScale(state.bracket, xMax);
+      const bx = xScale(income, xMax);
       const anchorRight = bx > M.l + PW * 0.6;
       const w = 168, h = 42;
       const bubbleX = anchorRight ? bx - w - 10 : bx + 10;
       const bubbleY = M.t + 8;
+      const isHovering = hoverIncome !== null;
+      const labelText = isHovering ? `INSPECTING $${income.toLocaleString()}` : `AT $${income.toLocaleString()}`;
+      const borderColor = isHovering ? '#a5b4fc' : '#c7d2fe';
 
       g.innerHTML = `
         <rect x="${bubbleX}" y="${bubbleY}" width="${w}" height="${h}" rx="8"
-              fill="#ffffff" stroke="#c7d2fe" stroke-width="1"/>
+              fill="#ffffff" stroke="${borderColor}" stroke-width="1"/>
         <text x="${bubbleX + 12}" y="${bubbleY + 17}" font-size="10" font-weight="600"
-              fill="#64748b" letter-spacing="0.06em">AT $${state.bracket.toLocaleString()}</text>
+              fill="#64748b" letter-spacing="0.06em">${labelText}</text>
         <text x="${bubbleX + 12}" y="${bubbleY + 33}" font-size="13" font-weight="700"
               fill="#4f46e5">You keep ~${keptCents}¢ of next $1</text>
       `;
@@ -1040,13 +1108,15 @@
     }
 
     // ============================================================
-    //  5. LIVE EXPLAINER
+    //  5. LIVE EXPLAINER (recomputes scenario from getActiveIncome
+    //      so it updates live while scrubbing the curve)
     // ============================================================
-    function renderExplainer(scenario) {
-      const { fed, prov, ccb, gis, kept } = scenario.losses;
+    function renderExplainer() {
       const profile = getEffectiveProfile();
       const provName = PROVINCE_NAMES[state.province];
-      const gross = state.bracket;
+      const gross = getActiveIncome();
+      const scenario = computeScenarioV2(profile, gross, state.rrsp, state.province);
+      const { fed, prov, ccb, gis, kept } = scenario.losses;
       const rate = keepRateAt(gross, state.rrsp, profile, state.province, 1000);
       const keptCents = Math.round(Math.max(0, Math.min(1, rate)) * 100);
       const losePerK = 1000 - Math.round(Math.max(0, Math.min(1, rate)) * 1000);
@@ -1216,6 +1286,10 @@
     // ============================================================
     //  9. MASTER RENDER
     // ============================================================
+    // Stored after each full render so hoverRender() can reuse the geometry
+    let currentChartPoints = [];
+    let currentChartXMax = 120000;
+
     function render() {
       const profile = getEffectiveProfile();
 
@@ -1226,6 +1300,8 @@
         ? curveSamplesAt(profile, state.province, 0)
         : null;
       const xMax = points[points.length - 1].xMax;
+      currentChartPoints = points;
+      currentChartXMax = xMax;
 
       updateXTicks(xMax);
       animateCurveTo(points, ghostPoints, xMax);
@@ -1240,8 +1316,20 @@
       const scenario = computeScenarioV2(profile, state.bracket, state.rrsp, state.province);
       renderPipeline(scenario);
       renderSummary(scenario);
-      renderExplainer(scenario);
+      renderExplainer();
       renderRrspReadout();
+
+      persistState();
+    }
+
+    // Cheap re-render path while scrubbing — only the chart marker,
+    // bubble tooltip, and explainer card update. Pipeline and summary
+    // cards stay anchored to the committed state.bracket so they don't flicker.
+    function hoverRender() {
+      if (!currentChartPoints.length) return;
+      placeMarker(currentChartXMax, currentChartPoints);
+      placeAnnotation(currentChartPoints, currentChartXMax);
+      renderExplainer();
     }
 
     // ============================================================
@@ -1382,8 +1470,98 @@
     });
 
     // ============================================================
+    // 10b. CHART HOVER / SCRUB / TAP-TO-COMMIT
+    // ============================================================
+    // Convert a pointer event (mouse or touch) into a snapped income value
+    function eventToIncome(clientX) {
+      const rect = svg.getBoundingClientRect();
+      // Map pixel x to viewBox x (the svg uses preserveAspectRatio="none" → linear scale)
+      const vbX = ((clientX - rect.left) / rect.width) * VB_W;
+      if (vbX < M.l) return 0;
+      if (vbX > M.l + PW) return currentChartXMax;
+      const raw = ((vbX - M.l) / PW) * currentChartXMax;
+      // Snap to $500 increments
+      return Math.max(0, Math.min(currentChartXMax, Math.round(raw / 500) * 500));
+    }
+
+    // Throttle hover updates to one per animation frame for smooth scrubbing
+    let hoverRAF = null;
+    function scheduleHoverRender() {
+      if (hoverRAF !== null) return;
+      hoverRAF = requestAnimationFrame(() => { hoverRAF = null; hoverRender(); });
+    }
+
+    svg.addEventListener('mousemove', (e) => {
+      const inc = eventToIncome(e.clientX);
+      if (inc === hoverIncome) return;
+      hoverIncome = inc;
+      scheduleHoverRender();
+    });
+    svg.addEventListener('mouseleave', () => {
+      if (hoverIncome === null) return;
+      hoverIncome = null;
+      scheduleHoverRender();
+    });
+    svg.addEventListener('click', (e) => {
+      const inc = eventToIncome(e.clientX);
+      state.bracket = Math.min(inc, 200000);
+      hoverIncome = null;
+      document.getElementById('income-input').value = state.bracket;
+      syncIncomeUI();
+      render();
+    });
+
+    // Touch — drag to scrub, lift to commit
+    svg.addEventListener('touchstart', (e) => {
+      if (!e.touches.length) return;
+      e.preventDefault();
+      hoverIncome = eventToIncome(e.touches[0].clientX);
+      scheduleHoverRender();
+    }, { passive: false });
+    svg.addEventListener('touchmove', (e) => {
+      if (!e.touches.length) return;
+      e.preventDefault();
+      const inc = eventToIncome(e.touches[0].clientX);
+      if (inc === hoverIncome) return;
+      hoverIncome = inc;
+      scheduleHoverRender();
+    }, { passive: false });
+    svg.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      const lastTouch = e.changedTouches && e.changedTouches[0];
+      const inc = lastTouch ? eventToIncome(lastTouch.clientX) : (hoverIncome !== null ? hoverIncome : state.bracket);
+      state.bracket = Math.min(inc, 200000);
+      hoverIncome = null;
+      document.getElementById('income-input').value = state.bracket;
+      syncIncomeUI();
+      render();
+    }, { passive: false });
+
+    // ============================================================
+    // 10c. RESET BUTTON
+    // ============================================================
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      Object.assign(state, DEFAULT_STATE);
+      hoverIncome = null;
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      document.getElementById('income-input').value = state.bracket;
+      document.getElementById('rrsp-input').value = state.rrsp;
+      document.getElementById('province-select').value = state.province;
+      rebuildBracketPills();
+      syncProfileActive();
+      syncIncomeUI();
+      syncFamilyUI();
+      render();
+    });
+
+    // ============================================================
     // 11. INIT
     // ============================================================
+    loadState();    // restore from localStorage if available
+    // After loading, the senior pill set might be needed
+    document.getElementById('income-input').value = state.bracket;
+    document.getElementById('rrsp-input').value = state.rrsp;
+    document.getElementById('province-select').value = state.province;
     buildStaticChartChrome();
     rebuildBracketPills();
     syncProfileActive();
