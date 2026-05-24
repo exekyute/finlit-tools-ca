@@ -45,13 +45,13 @@
 
     /* ---------- BRACKET PILLS ---------- */
     .bracket-pill {
-      padding: 10px 18px;
+      padding: 8px 14px;
       border-radius: 999px;
       border: 1px solid #e2e8f0;
       background: #ffffff;
       color: #475569;
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13px;
       cursor: pointer;
       transition: all .2s ease;
     }
@@ -75,6 +75,53 @@
     }
     select.province-select:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79,70,229,0.1); }
 
+    /* ---------- NUMBER INPUTS + STEPPERS ---------- */
+    .number-input {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e293b;
+      font-variant-numeric: tabular-nums;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      width: 100%;
+      -moz-appearance: textfield;
+    }
+    .number-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79,70,229,0.1); }
+    .number-input::-webkit-outer-spin-button,
+    .number-input::-webkit-inner-spin-button {
+      -webkit-appearance: none; margin: 0;
+    }
+    .stepper-btn {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      color: #475569;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all .15s ease;
+      line-height: 1;
+    }
+    .stepper-btn:hover { border-color: #4f46e5; color: #4f46e5; background: #eef2ff; }
+    .stepper-btn:disabled { opacity: .4; cursor: not-allowed; background: #f8fafc; }
+    .stepper-display {
+      min-width: 26px; text-align: center; font-weight: 700;
+      font-size: 16px; color: #1e293b; font-variant-numeric: tabular-nums;
+    }
+    .stepper-rrsp .stepper-btn { border-color: #a7f3d0; color: #047857; background: #ffffff; }
+    .stepper-rrsp .stepper-btn:hover { background: #ecfdf5; border-color: #10b981; }
+    .input-prefix {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      color: #94a3b8; font-weight: 600; pointer-events: none;
+    }
+    .input-prefix-emerald { color: #047857; }
+
     /* ---------- ROLLERCOASTER ---------- */
     .chart-wrap svg { display: block; width: 100%; height: auto; }
 
@@ -97,11 +144,11 @@
     .pipe-amount { width: 110px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 14px; color: #1e293b; }
 
     /* color tokens — light theme, distinguishable hues */
-    .c-keep { background: #10b981; }     /* emerald — money you keep */
-    .c-fed  { background: #64748b; }     /* slate 500 — federal tax */
-    .c-prov { background: #94a3b8; }     /* slate 400 — provincial tax */
-    .c-ccb  { background: #f59e0b; }     /* amber — CCB clawback */
-    .c-gis  { background: #e11d48; }     /* rose — GIS clawback */
+    .c-keep { background: #10b981; }
+    .c-fed  { background: #64748b; }
+    .c-prov { background: #94a3b8; }
+    .c-ccb  { background: #f59e0b; }
+    .c-gis  { background: #e11d48; }
 
     .amount-keep { color: #047857; }
     .amount-fed  { color: #475569; }
@@ -109,8 +156,11 @@
     .amount-ccb  { color: #b45309; }
     .amount-gis  { color: #9f1239; }
 
-    /* legend dots */
     .dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; margin-right: 6px; vertical-align: middle; }
+    .dot-ghost {
+      width: 18px; height: 2px; border-radius: 1px; display: inline-block; margin-right: 6px;
+      vertical-align: middle; background: repeating-linear-gradient(90deg, #818cf8 0 4px, transparent 4px 7px);
+    }
 
     /* ---------- EXPANDER ---------- */
     .expander-summary {
@@ -139,7 +189,6 @@
     }
     details[open] .expander-summary::before { content: '−'; }
 
-    /* num helper */
     .num { font-variant-numeric: tabular-nums; }
 
     /* print */
@@ -163,7 +212,7 @@
       </p>
     </header>
 
-    <!-- ============================ EXPLAINER CARDS (match tfsa-snowballer pattern) ============================ -->
+    <!-- ============================ EXPLAINER CARDS ============================ -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm text-slate-700 leading-relaxed flex flex-col justify-center">
         <h2 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
@@ -173,7 +222,7 @@
           How to use this tool
         </h2>
         <p class="text-sm">
-          Pick a household situation and an income bracket below. The chart, pipeline, and summary cards all update together to show how much of your next dollar earned actually lands in your pocket — after federal and provincial income tax, <em>and</em> after the Canada Child Benefit or GIS gets quietly reduced behind the scenes.
+          Pick a household situation, dial in your actual income and family size, and the chart, pipeline, and summary cards all update together. Then try the <strong>RRSP Escape Hatch</strong> at the bottom to see how a single deduction can flatten the cliff.
         </p>
       </div>
 
@@ -198,6 +247,7 @@
     <!-- ============================ SECTION A: PROFILE CARDS ============================ -->
     <section class="bg-white border border-slate-200 rounded-2xl shadow-sm shadow-slate-200/50 p-6 sm:p-8 space-y-5">
       <h2 class="font-bold text-slate-900 text-lg">Step 1 — Pick a situation</h2>
+      <p class="text-sm text-slate-600 -mt-3">These set sensible defaults you can tweak below.</p>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="profile-grid">
         <button class="profile-card active" data-profile="single-parent-1-young">
           <div class="icon">👶</div>
@@ -217,16 +267,46 @@
       </div>
     </section>
 
-    <!-- ============================ SECTION B: BRACKETS + PROVINCE ============================ -->
-    <section class="bg-white border border-slate-200 rounded-2xl shadow-sm shadow-slate-200/50 p-6 sm:p-8 space-y-5">
-      <h2 class="font-bold text-slate-900 text-lg">Step 2 — Pick an income bracket and province</h2>
-      <div class="flex flex-wrap items-center gap-3" id="bracket-row">
-        <button class="bracket-pill active" data-bracket="35000">Entry Level&nbsp;&nbsp;·&nbsp;&nbsp;$35,000</button>
-        <button class="bracket-pill" data-bracket="55000">Mid-Career&nbsp;&nbsp;·&nbsp;&nbsp;$55,000</button>
-        <button class="bracket-pill" data-bracket="75000">Stepping Up&nbsp;&nbsp;·&nbsp;&nbsp;$75,000</button>
-        <div class="flex items-center gap-2 ml-auto">
-          <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Province</span>
-          <select id="province-select" class="province-select">
+    <!-- ============================ SECTION B: CUSTOM INPUTS ============================ -->
+    <section class="bg-white border border-slate-200 rounded-2xl shadow-sm shadow-slate-200/50 p-6 sm:p-8 space-y-6">
+      <h2 class="font-bold text-slate-900 text-lg">Step 2 — Your numbers</h2>
+
+      <!-- Income row -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5 items-end">
+        <div>
+          <label class="block text-xs uppercase tracking-wider font-semibold text-slate-500 mb-2" id="income-label">Annual Gross Income</label>
+          <div class="relative">
+            <span class="input-prefix">$</span>
+            <input type="number" id="income-input" class="number-input pl-7" value="35000" min="0" max="200000" step="500">
+          </div>
+        </div>
+        <div class="md:col-span-2 flex flex-wrap items-end gap-2 pb-1">
+          <span class="text-xs text-slate-500 mr-1">Quick picks:</span>
+          <div class="flex flex-wrap gap-2" id="bracket-row"></div>
+        </div>
+      </div>
+
+      <!-- Family / senior conditional row -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5 items-end" id="family-controls">
+        <div>
+          <label class="block text-xs uppercase tracking-wider font-semibold text-slate-500 mb-2">Children under 6</label>
+          <div class="flex items-center gap-3">
+            <button class="stepper-btn" data-stepper="kidsUnder6" data-delta="-1">−</button>
+            <span class="stepper-display" id="display-kidsUnder6">1</span>
+            <button class="stepper-btn" data-stepper="kidsUnder6" data-delta="1">+</button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-wider font-semibold text-slate-500 mb-2">Children age 6 – 17</label>
+          <div class="flex items-center gap-3">
+            <button class="stepper-btn" data-stepper="kids6to17" data-delta="-1">−</button>
+            <span class="stepper-display" id="display-kids6to17">0</span>
+            <button class="stepper-btn" data-stepper="kids6to17" data-delta="1">+</button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-wider font-semibold text-slate-500 mb-2">Province</label>
+          <select id="province-select" class="province-select w-full">
             <option value="ON">Ontario</option>
             <option value="BC">British Columbia</option>
             <option value="AB">Alberta</option>
@@ -245,7 +325,7 @@
           <h3 class="font-bold text-slate-900 text-lg">The Disposable Income Rollercoaster</h3>
           <p class="text-sm text-slate-600 mt-1">How many cents of each <em>next</em> dollar earned actually reach your pocket, across the income spectrum.</p>
         </div>
-        <div class="text-xs text-slate-500 flex items-center gap-4 font-medium">
+        <div class="text-xs text-slate-500 flex items-center gap-4 font-medium" id="chart-legend">
           <span><span class="dot" style="background:#4f46e5;"></span>Take-home rate</span>
           <span><span class="dot" style="background:#f59e0b;"></span>Cliff zone</span>
         </div>
@@ -255,7 +335,7 @@
       </div>
     </section>
 
-    <!-- ============================ "WHAT'S HAPPENING AT YOUR BRACKET" — live explainer card ============================ -->
+    <!-- ============================ "WHAT'S HAPPENING" EXPLAINER ============================ -->
     <section class="bg-white border border-slate-200 p-6 sm:p-8 rounded-2xl shadow-sm shadow-slate-200/50 text-slate-700 leading-relaxed">
       <h2 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
         <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -263,9 +343,7 @@
         </svg>
         What's happening at your bracket
       </h2>
-      <div id="live-explainer" class="text-sm space-y-3">
-        <!-- filled by render() -->
-      </div>
+      <div id="live-explainer" class="text-sm space-y-3"></div>
     </section>
 
     <!-- ============================ LEAKY PIPELINE ============================ -->
@@ -312,7 +390,7 @@
       </div>
     </section>
 
-    <!-- ============================ DISCLAIMER #1 — INLINE WARNING ============================ -->
+    <!-- ============================ INLINE DISCLAIMER ============================ -->
     <aside class="bg-amber-50 border border-amber-200 p-5 sm:p-6 rounded-2xl shadow-sm text-amber-900 leading-relaxed">
       <h2 class="font-bold text-amber-800 mb-2 flex items-center gap-2">
         <svg class="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -325,7 +403,36 @@
       </p>
     </aside>
 
-    <!-- ============================ SUMMARY CARDS — 3-card style from tfsa-snowballer ============================ -->
+    <!-- ============================ RRSP ESCAPE HATCH ============================ -->
+    <section class="bg-emerald-50 border border-emerald-200 p-6 sm:p-8 rounded-2xl shadow-sm leading-relaxed">
+      <div class="flex items-start gap-6 flex-wrap">
+        <div class="flex-1 min-w-[280px]">
+          <h2 class="font-bold text-emerald-900 mb-2 flex items-center gap-2">
+            <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+            </svg>
+            The RRSP Escape Hatch
+          </h2>
+          <p class="text-sm text-emerald-900">
+            An RRSP contribution lowers your Adjusted Family Net Income — which restores lost CCB <em>and</em> reduces income tax in one move. Dial it up and watch the dashed <strong>"without RRSP"</strong> ghost curve appear behind your new, improved keep-rate curve.
+          </p>
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-wider font-semibold text-emerald-800 mb-2 text-right">RRSP Contribution</label>
+          <div class="flex items-center gap-3 stepper-rrsp">
+            <button class="stepper-btn" data-rrsp-delta="-500">−</button>
+            <div class="relative">
+              <span class="input-prefix input-prefix-emerald">$</span>
+              <input type="number" id="rrsp-input" class="number-input pl-7 w-32 text-right" value="0" min="0" max="30000" step="500" style="border-color:#a7f3d0;">
+            </div>
+            <button class="stepper-btn" data-rrsp-delta="500">+</button>
+          </div>
+        </div>
+      </div>
+      <div id="rrsp-readout" class="mt-5 pt-5 border-t border-emerald-200 text-sm text-emerald-900" style="display:none;"></div>
+    </section>
+
+    <!-- ============================ SUMMARY CARDS ============================ -->
     <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div class="bg-indigo-600 text-white p-6 sm:p-8 rounded-2xl shadow-lg shadow-indigo-600/20 transform transition duration-300 hover:-translate-y-1">
         <p class="text-indigo-100 text-sm font-semibold tracking-wide uppercase mb-2">Gross Raise on Paper</p>
@@ -344,7 +451,7 @@
       </div>
     </section>
 
-    <!-- ============================ FOOTER + DISCLAIMER #2 ============================ -->
+    <!-- ============================ FOOTER + LEGAL DISCLAIMER ============================ -->
     <footer class="pt-6 mt-8 border-t border-slate-200">
       <details>
         <summary class="expander-summary">LEGAL DISCLAIMER &nbsp;·&nbsp; Click to expand</summary>
@@ -352,44 +459,34 @@
           <strong class="text-slate-800">Legal Disclaimer:</strong> This application is intended solely for financial literacy illustration and educational purposes. It does not constitute formal accounting, tax filing, or legal financial planning advice. True calculation metrics rely on complex variables, including provincial low-income tax reductions, nested credits, shared custody arrangements, and marital status changes. Always cross-verify data models with official CRA schedules, Service Canada tables, or a Certified Professional Accountant (CPA) before making significant employment or income shifts.
         </p>
       </details>
-      <div class="text-[11px] text-slate-400 mt-4 tracking-wider uppercase">© Finlit Tools · Clawback Radar v1 · 2026 Parameter Frame</div>
+      <div class="text-[11px] text-slate-400 mt-4 tracking-wider uppercase">© Finlit Tools · Clawback Radar v2 · 2026 Parameter Frame</div>
     </footer>
 
   </div>
 
   <!-- ============================================================
        SCRIPT
-       Architecture: pure `BenefitMath` module (exposed on window for
-       devtools spot-checks per plan) + thin render layer that reads
-       from it. All animation through one cancelableTween() helper.
        ============================================================ -->
   <script>
   (function () {
     'use strict';
 
     // ============================================================
-    //  1. BENEFIT MATH — pure, no DOM dependency (UNCHANGED from v1)
+    //  1. BENEFIT MATH — pure, unchanged from v1 (the contract)
     // ============================================================
 
-    // CCB — July 2026 to June 2027 benefit year
     const CCB = {
-      maxUnder6: 8157,
-      max6to17:  6883,
-      tier1Threshold: 38237,
-      tier2Threshold: 82847,
+      maxUnder6: 8157, max6to17: 6883,
+      tier1Threshold: 38237, tier2Threshold: 82847,
       tier1Rates: { 1: 0.070, 2: 0.135, 3: 0.190, 4: 0.230 },
       tier2Rates: { 1: 0.032, 2: 0.057, 3: 0.080, 4: 0.095 }
     };
-
-    // GIS — Q1 2026 single-senior reference
     const GIS = {
       maxAnnual: 1105.43 * 12,
       earningsExemptFull: 5000,
       earningsExemptPartial: 10000,
       clawbackRate: 0.50
     };
-
-    // 2026 federal brackets (indexed estimate; BPA as 15% non-refundable credit)
     const FED_BPA_2026 = 16452;
     const FED_BRACKETS_2026 = [
       { upTo: 58524,  rate: 0.150 },
@@ -398,59 +495,41 @@
       { upTo: 258463, rate: 0.290 },
       { upTo: Infinity, rate: 0.330 }
     ];
-
-    // 2026 provincial brackets (simplified — surtaxes/health premiums omitted by design)
     const PROV = {
       ON: { bpa: 13002, brackets: [
-        { upTo: 52475,  rate: 0.0505 },
-        { upTo: 104950, rate: 0.0915 },
-        { upTo: 150000, rate: 0.1116 },
-        { upTo: 220000, rate: 0.1216 },
+        { upTo: 52475, rate: 0.0505 }, { upTo: 104950, rate: 0.0915 },
+        { upTo: 150000, rate: 0.1116 }, { upTo: 220000, rate: 0.1216 },
         { upTo: Infinity, rate: 0.1316 }
       ]},
       BC: { bpa: 12932, brackets: [
-        { upTo: 50264,  rate: 0.0506 },
-        { upTo: 100528, rate: 0.0770 },
-        { upTo: 115408, rate: 0.1050 },
-        { upTo: 140131, rate: 0.1229 },
-        { upTo: 189982, rate: 0.1470 },
-        { upTo: 264933, rate: 0.1680 },
+        { upTo: 50264, rate: 0.0506 }, { upTo: 100528, rate: 0.0770 },
+        { upTo: 115408, rate: 0.1050 }, { upTo: 140131, rate: 0.1229 },
+        { upTo: 189982, rate: 0.1470 }, { upTo: 264933, rate: 0.1680 },
         { upTo: Infinity, rate: 0.2050 }
       ]},
       AB: { bpa: 22323, brackets: [
-        { upTo: 60000,  rate: 0.080 },
-        { upTo: 151234, rate: 0.100 },
-        { upTo: 181481, rate: 0.120 },
-        { upTo: 241974, rate: 0.130 },
-        { upTo: 322632, rate: 0.140 },
-        { upTo: Infinity, rate: 0.150 }
+        { upTo: 60000, rate: 0.080 }, { upTo: 151234, rate: 0.100 },
+        { upTo: 181481, rate: 0.120 }, { upTo: 241974, rate: 0.130 },
+        { upTo: 322632, rate: 0.140 }, { upTo: Infinity, rate: 0.150 }
       ]},
       QC: { bpa: 18571, brackets: [
-        { upTo: 54322,  rate: 0.140 },
-        { upTo: 108652, rate: 0.190 },
-        { upTo: 132191, rate: 0.240 },
-        { upTo: Infinity, rate: 0.2575 }
+        { upTo: 54322, rate: 0.140 }, { upTo: 108652, rate: 0.190 },
+        { upTo: 132191, rate: 0.240 }, { upTo: Infinity, rate: 0.2575 }
       ]},
       NS: { bpa: 11744, brackets: [
-        { upTo: 29590,  rate: 0.0879 },
-        { upTo: 59180,  rate: 0.1495 },
-        { upTo: 93000,  rate: 0.1667 },
-        { upTo: 150000, rate: 0.1750 },
+        { upTo: 29590, rate: 0.0879 }, { upTo: 59180, rate: 0.1495 },
+        { upTo: 93000, rate: 0.1667 }, { upTo: 150000, rate: 0.1750 },
         { upTo: Infinity, rate: 0.2100 }
       ]},
       MB: { bpa: 15969, brackets: [
-        { upTo: 47000,  rate: 0.1080 },
-        { upTo: 100000, rate: 0.1275 },
+        { upTo: 47000, rate: 0.1080 }, { upTo: 100000, rate: 0.1275 },
         { upTo: Infinity, rate: 0.1740 }
       ]}
     };
-
-    const PROFILES = {
-      'single-parent-1-young': { type: 'family', kidsUnder6: 1, kids6to17: 0, label: 'one child under 6' },
-      'working-family-2-mixed': { type: 'family', kidsUnder6: 1, kids6to17: 1, label: 'two children (one under 6, one school-age)' },
-      'senior-gis':             { type: 'senior', label: 'a single senior receiving GIS' }
+    const PROVINCE_NAMES = {
+      ON: 'Ontario', BC: 'British Columbia', AB: 'Alberta',
+      QC: 'Quebec', NS: 'Nova Scotia', MB: 'Manitoba'
     };
-    const PROVINCE_NAMES = { ON: 'Ontario', BC: 'British Columbia', AB: 'Alberta', QC: 'Quebec', NS: 'Nova Scotia', MB: 'Manitoba' };
 
     function bracketTax(income, brackets) {
       let tax = 0, prev = 0;
@@ -494,61 +573,133 @@
                   + (employmentIncome - GIS.earningsExemptFull - GIS.earningsExemptPartial);
       return Math.max(0, GIS.maxAnnual - counted * GIS.clawbackRate);
     }
-    function totalBenefits(gross, profile) {
-      return ccbBenefit(gross, profile) + gisBenefit(gross, profile);
+
+    // ============================================================
+    //  1b. COMPOSITION LAYER — RRSP-aware wrappers.
+    //  These do NOT modify the math primitives; they just feed
+    //  adjusted inputs (gross - rrsp) into the existing functions.
+    // ============================================================
+
+    // For families: AFNI = gross - rrsp. For seniors: GIS uses employment income directly,
+    //   but RRSP still reduces taxable income for tax calculations.
+    function afniFor(gross, rrsp) { return Math.max(0, gross - rrsp); }
+    function taxableFor(gross, rrsp) { return Math.max(0, gross - rrsp); }
+
+    function benefitsAt(gross, rrsp, profile) {
+      const afni = afniFor(gross, rrsp);
+      // GIS clawback applies to employment income, NOT to AFNI in the same way as CCB.
+      // RRSP contributions reduce GIS-clawback income at the federal level (RRSP is deducted
+      // from "income" used for GIS calc per Service Canada rules), so we apply the deduction here too.
+      const empForGis = afni;
+      return ccbBenefit(afni, profile) + gisBenefit(empForGis, profile);
     }
-    function disposable(gross, profile, province) {
-      return gross - federalTax(gross) - provincialTax(gross, province) + totalBenefits(gross, profile);
+    function disposableAt(gross, rrsp, profile, province) {
+      return gross
+        - federalTax(taxableFor(gross, rrsp))
+        - provincialTax(taxableFor(gross, rrsp), province)
+        + benefitsAt(gross, rrsp, profile);
     }
-    function keepRate(gross, profile, province, step) {
+    function keepRateAt(gross, rrsp, profile, province, step) {
       step = step || 1000;
-      const d0 = disposable(gross, profile, province);
-      const d1 = disposable(gross + step, profile, province);
+      const d0 = disposableAt(gross, rrsp, profile, province);
+      const d1 = disposableAt(gross + step, rrsp, profile, province);
       return (d1 - d0) / step;
     }
-    function computeScenario(profileKey, gross, province) {
-      const profile = PROFILES[profileKey];
+
+    function computeScenarioV2(profile, gross, rrsp, province) {
       const raise = 2500;
-      const fedBefore  = federalTax(gross);
-      const fedAfter   = federalTax(gross + raise);
-      const provBefore = provincialTax(gross, province);
-      const provAfter  = provincialTax(gross + raise, province);
-      const ccbBefore  = ccbBenefit(gross, profile);
-      const ccbAfter   = ccbBenefit(gross + raise, profile);
-      const gisBefore  = gisBenefit(gross, profile);
-      const gisAfter   = gisBenefit(gross + raise, profile);
+      const fedBefore  = federalTax(taxableFor(gross,         rrsp));
+      const fedAfter   = federalTax(taxableFor(gross + raise, rrsp));
+      const provBefore = provincialTax(taxableFor(gross,         rrsp), province);
+      const provAfter  = provincialTax(taxableFor(gross + raise, rrsp), province);
+      const ccbBefore  = ccbBenefit(afniFor(gross,         rrsp), profile);
+      const ccbAfter   = ccbBenefit(afniFor(gross + raise, rrsp), profile);
+      const gisBefore  = gisBenefit(afniFor(gross,         rrsp), profile);
+      const gisAfter   = gisBenefit(afniFor(gross + raise, rrsp), profile);
       return {
-        gross, raise, province, profileKey, profile,
+        gross, raise, rrsp, province,
         losses: {
           fed:  fedAfter  - fedBefore,
           prov: provAfter - provBefore,
           ccb:  ccbBefore - ccbAfter,
           gis:  gisBefore - gisAfter,
-          kept: raise - (fedAfter - fedBefore) - (provAfter - provBefore) - (ccbBefore - ccbAfter) - (gisBefore - gisAfter)
+          kept: raise - (fedAfter - fedBefore) - (provAfter - provBefore)
+                      - (ccbBefore - ccbAfter) - (gisBefore - gisAfter)
         }
       };
     }
-    function curveSamples(profileKey, province) {
-      const profile = PROFILES[profileKey];
+
+    // "What is one RRSP contribution worth today?"
+    // = (tax owed without RRSP) − (tax owed with RRSP) + (CCB with RRSP) − (CCB without RRSP)
+    //   + (GIS with RRSP) − (GIS without RRSP)
+    function rrspImmediateValue(profile, gross, rrsp, province) {
+      if (rrsp <= 0) return { taxSavings: 0, benefitGain: 0, total: 0 };
+      const taxNo  = federalTax(gross)        + provincialTax(gross, province);
+      const taxYes = federalTax(gross - rrsp) + provincialTax(gross - rrsp, province);
+      const benNo  = ccbBenefit(gross,        profile) + gisBenefit(gross,        profile);
+      const benYes = ccbBenefit(gross - rrsp, profile) + gisBenefit(gross - rrsp, profile);
+      return {
+        taxSavings: Math.max(0, taxNo - taxYes),
+        benefitGain: Math.max(0, benYes - benNo),
+        total: Math.max(0, (taxNo - taxYes) + (benYes - benNo))
+      };
+    }
+
+    function curveSamplesAt(profile, province, rrsp) {
       const out = [];
       const xMax = profile.type === 'senior' ? 40000 : 120000;
       const step = profile.type === 'senior' ? 500 : 1500;
       for (let x = 0; x <= xMax; x += step) {
-        out.push({ x, y: Math.max(-0.2, Math.min(1.2, keepRate(x, profile, province, 500))), xMax });
+        out.push({
+          x,
+          y: Math.max(-0.2, Math.min(1.2, keepRateAt(x, rrsp, profile, province, 500))),
+          xMax
+        });
       }
       return out;
     }
 
+    // Expose pure math + v2 wrappers for devtools spot-checks
     window.BenefitMath = {
-      computeScenario, curveSamples, ccbBenefit, gisBenefit,
-      federalTax, provincialTax, disposable, keepRate,
-      CONST: { CCB, GIS, FED_BPA_2026, FED_BRACKETS_2026, PROV, PROFILES }
+      // unchanged primitives
+      ccbBenefit, gisBenefit, federalTax, provincialTax,
+      // v2 composition layer
+      afniFor, taxableFor, disposableAt, keepRateAt, computeScenarioV2,
+      rrspImmediateValue, curveSamplesAt,
+      CONST: { CCB, GIS, FED_BPA_2026, FED_BRACKETS_2026, PROV }
     };
 
     // ============================================================
     //  2. STATE
     // ============================================================
-    const state = { profile: 'single-parent-1-young', bracket: 35000, province: 'ON' };
+    const PRESETS = {
+      'single-parent-1-young':  { isSenior: false, kidsUnder6: 1, kids6to17: 0 },
+      'working-family-2-mixed': { isSenior: false, kidsUnder6: 1, kids6to17: 1 },
+      'senior-gis':             { isSenior: true,  kidsUnder6: 0, kids6to17: 0 }
+    };
+    const state = {
+      profile: 'single-parent-1-young',
+      isSenior: false,
+      kidsUnder6: 1,
+      kids6to17: 0,
+      bracket: 35000,
+      province: 'ON',
+      rrsp: 0
+    };
+
+    function getEffectiveProfile() {
+      if (state.isSenior) return { type: 'senior', label: 'a single senior receiving GIS' };
+      const n = state.kidsUnder6 + state.kids6to17;
+      const desc = n === 0 ? 'no children'
+        : n === 1 ? '1 child'
+        : `${n} children`;
+      return {
+        type: 'family',
+        kidsUnder6: state.kidsUnder6,
+        kids6to17: state.kids6to17,
+        label: desc
+      };
+    }
 
     // ============================================================
     //  3. ANIMATION HELPER
@@ -569,7 +720,7 @@
     }
 
     // ============================================================
-    //  4. ROLLERCOASTER (SVG) — light theme
+    //  4. ROLLERCOASTER (SVG)
     // ============================================================
     const VB_W = 800, VB_H = 380;
     const M = { l: 56, r: 24, t: 28, b: 46 };
@@ -580,7 +731,6 @@
 
     function buildStaticChartChrome() {
       svg.innerHTML = '';
-
       const defs = document.createElementNS(SVG_NS, 'defs');
       defs.innerHTML = `
         <linearGradient id="gradCurveArea" x1="0" y1="0" x2="0" y2="1">
@@ -594,15 +744,12 @@
       `;
       svg.appendChild(defs);
 
-      // Plot background
       const bg = document.createElementNS(SVG_NS, 'rect');
       bg.setAttribute('x', M.l); bg.setAttribute('y', M.t);
       bg.setAttribute('width', PW); bg.setAttribute('height', PH);
-      bg.setAttribute('fill', '#f8fafc');
-      bg.setAttribute('rx', '8');
+      bg.setAttribute('fill', '#f8fafc'); bg.setAttribute('rx', '8');
       svg.appendChild(bg);
 
-      // Y gridlines + labels
       const gridGroup = document.createElementNS(SVG_NS, 'g');
       gridGroup.setAttribute('id', 'grid');
       for (let i = 0; i <= 4; i++) {
@@ -646,7 +793,7 @@
       xTitle.textContent = 'GROSS ANNUAL INCOME';
       svg.appendChild(xTitle);
 
-      // Dynamic layers
+      // Dynamic layers — cliff under, area under, ghost curve (no-RRSP), then solid (current)
       const cliffFill = document.createElementNS(SVG_NS, 'path');
       cliffFill.setAttribute('id', 'cliff-fill');
       cliffFill.setAttribute('fill', 'url(#gradCliff)');
@@ -656,6 +803,17 @@
       areaFill.setAttribute('id', 'area-fill');
       areaFill.setAttribute('fill', 'url(#gradCurveArea)');
       svg.appendChild(areaFill);
+
+      // Ghost curve = "without RRSP" baseline, shown only when rrsp > 0
+      const ghostCurve = document.createElementNS(SVG_NS, 'path');
+      ghostCurve.setAttribute('id', 'ghost-curve');
+      ghostCurve.setAttribute('fill', 'none');
+      ghostCurve.setAttribute('stroke', '#818cf8');
+      ghostCurve.setAttribute('stroke-width', '2');
+      ghostCurve.setAttribute('stroke-dasharray', '4,4');
+      ghostCurve.setAttribute('stroke-linejoin', 'round');
+      ghostCurve.setAttribute('opacity', '0');
+      svg.appendChild(ghostCurve);
 
       const curve = document.createElementNS(SVG_NS, 'path');
       curve.setAttribute('id', 'curve');
@@ -670,7 +828,6 @@
       xticks.setAttribute('id', 'xticks');
       svg.appendChild(xticks);
 
-      // Bracket marker
       const marker = document.createElementNS(SVG_NS, 'g');
       marker.setAttribute('id', 'bracket-marker');
       marker.innerHTML = `
@@ -680,10 +837,8 @@
       `;
       svg.appendChild(marker);
 
-      // Cliff label
       const cliffLabel = document.createElementNS(SVG_NS, 'g');
       cliffLabel.setAttribute('id', 'cliff-label');
-      // White halo via paint-order: stroke fill — readable even when the curve passes underneath
       cliffLabel.innerHTML = `
         <text x="0" y="0" text-anchor="middle" font-size="11" font-weight="700"
               fill="#b45309" letter-spacing="0.10em"
@@ -698,7 +853,6 @@
       `;
       svg.appendChild(cliffLabel);
 
-      // Bracket pin tooltip
       const ann = document.createElementNS(SVG_NS, 'g');
       ann.setAttribute('id', 'annotation');
       svg.appendChild(ann);
@@ -706,12 +860,11 @@
 
     function xScale(x, xMax) { return M.l + (x / xMax) * PW; }
     function yScale(y) {
-      const clamped = Math.max(0, Math.min(1, y));
-      return M.t + (1 - clamped) * PH;
+      const c = Math.max(0, Math.min(1, y));
+      return M.t + (1 - c) * PH;
     }
-
     function buildCurvePath(points, xMax) {
-      if (points.length === 0) return '';
+      if (!points.length) return '';
       let d = `M ${xScale(points[0].x, xMax).toFixed(2)} ${yScale(points[0].y).toFixed(2)}`;
       for (let i = 1; i < points.length; i++) {
         const px = xScale(points[i].x, xMax), py = yScale(points[i].y);
@@ -723,7 +876,7 @@
       return d;
     }
     function buildAreaPath(points, xMax) {
-      if (points.length === 0) return '';
+      if (!points.length) return '';
       const baseY = M.t + PH;
       let d = buildCurvePath(points, xMax);
       d += ` L ${xScale(points[points.length - 1].x, xMax).toFixed(2)} ${baseY.toFixed(2)}`;
@@ -731,7 +884,7 @@
       return d;
     }
     function buildCliffPath(points, xMax) {
-      if (points.length === 0) return '';
+      if (!points.length) return '';
       let minIdx = 0;
       for (let i = 1; i < points.length; i++) if (points[i].y < points[minIdx].y) minIdx = i;
       const threshold = Math.min(0.55, points[minIdx].y + 0.10);
@@ -743,13 +896,21 @@
     }
 
     let currentPoints = null;
-    function animateCurveTo(nextPoints, xMax) {
+    let currentGhostPoints = null;
+    function animateCurveTo(nextPoints, nextGhost, xMax) {
       const fromPoints = currentPoints && currentPoints.length === nextPoints.length
         ? currentPoints
         : nextPoints.map(p => ({ x: p.x, y: 1 }));
+
       const curveEl = document.getElementById('curve');
       const areaEl  = document.getElementById('area-fill');
       const cliffEl = document.getElementById('cliff-fill');
+      const ghostEl = document.getElementById('ghost-curve');
+
+      const wantGhost = !!nextGhost;
+      const fromGhost = currentGhostPoints && nextGhost && currentGhostPoints.length === nextGhost.length
+        ? currentGhostPoints
+        : (nextGhost ? nextGhost.map(p => ({ x: p.x, y: 1 })) : null);
 
       cancelableTween(curveEl, 700, (p) => {
         const interp = nextPoints.map((np, i) => ({
@@ -759,7 +920,23 @@
         curveEl.setAttribute('d', buildCurvePath(interp, xMax));
         areaEl.setAttribute('d',  buildAreaPath(interp, xMax));
         cliffEl.setAttribute('d', buildCliffPath(interp, xMax));
-        if (p === 1) currentPoints = nextPoints;
+
+        if (wantGhost) {
+          const interpG = nextGhost.map((np, i) => ({
+            x: np.x,
+            y: fromGhost[i].y + (np.y - fromGhost[i].y) * p
+          }));
+          ghostEl.setAttribute('d', buildCurvePath(interpG, xMax));
+          ghostEl.setAttribute('opacity', String(0.9 * p + (currentGhostPoints ? 0.1 : 0)));
+        } else {
+          ghostEl.setAttribute('opacity', String((1 - p) * (currentGhostPoints ? 0.9 : 0)));
+          if (p === 1) ghostEl.setAttribute('d', '');
+        }
+
+        if (p === 1) {
+          currentPoints = nextPoints;
+          currentGhostPoints = wantGhost ? nextGhost : null;
+        }
       });
     }
 
@@ -819,7 +996,6 @@
       if (deep.y > 0.65) { label.style.display = 'none'; return; }
       label.style.display = '';
       let cx = xScale(deep.x, xMax);
-      // Lift label well clear of the curve line; clamp inside the plot area top
       let cy = yScale(deep.y) - 34;
       cy = Math.max(M.t + 14, cy);
       cx = Math.max(M.l + 110, Math.min(M.l + PW - 110, cx));
@@ -829,12 +1005,11 @@
       });
     }
 
-    // Small light tooltip pinned at the bracket marker
     function placeAnnotation(points, xMax) {
       const g = document.getElementById('annotation');
       g.innerHTML = '';
-      const profile = PROFILES[state.profile];
-      const rate = keepRate(state.bracket, profile, state.province, 1000);
+      const profile = getEffectiveProfile();
+      const rate = keepRateAt(state.bracket, state.rrsp, profile, state.province, 1000);
       const keptCents = Math.round(Math.max(0, Math.min(1, rate)) * 100);
 
       const bx = xScale(state.bracket, xMax);
@@ -853,26 +1028,41 @@
       `;
     }
 
+    function updateChartLegend() {
+      const el = document.getElementById('chart-legend');
+      const ghostMarkup = state.rrsp > 0
+        ? `<span><span class="dot-ghost"></span>Without RRSP</span>` : '';
+      el.innerHTML = `
+        <span><span class="dot" style="background:#4f46e5;"></span>${state.rrsp > 0 ? 'With RRSP' : 'Take-home rate'}</span>
+        ${ghostMarkup}
+        <span><span class="dot" style="background:#f59e0b;"></span>Cliff zone</span>
+      `;
+    }
+
     // ============================================================
-    //  5. LIVE EXPLAINER CARD — friendly, tfsa-snowballer voice
+    //  5. LIVE EXPLAINER
     // ============================================================
     function renderExplainer(scenario) {
       const { fed, prov, ccb, gis, kept } = scenario.losses;
-      const profile = PROFILES[state.profile];
+      const profile = getEffectiveProfile();
       const provName = PROVINCE_NAMES[state.province];
       const gross = state.bracket;
-      const rate = keepRate(gross, profile, state.province, 1000);
+      const rate = keepRateAt(gross, state.rrsp, profile, state.province, 1000);
       const keptCents = Math.round(Math.max(0, Math.min(1, rate)) * 100);
       const losePerK = 1000 - Math.round(Math.max(0, Math.min(1, rate)) * 1000);
       const emtrPct = Math.round((1 - kept / 2500) * 100);
       const taxOnly = Math.max(0, fed + prov);
-      const clawOnly = Math.max(0, ccb + gis);
+
+      const profileLabel = profile.type === 'senior'
+        ? `${profile.label}`
+        : (profile.kidsUnder6 + profile.kids6to17 === 0
+            ? 'a household with no children'
+            : `a household with ${profile.kidsUnder6 ? profile.kidsUnder6 + ' child' + (profile.kidsUnder6 > 1 ? 'ren' : '') + ' under 6' : ''}${(profile.kidsUnder6 && profile.kids6to17) ? ' and ' : ''}${profile.kids6to17 ? profile.kids6to17 + ' aged 6–17' : ''}`);
 
       const heading = profile.type === 'senior'
-        ? `At <strong>$${gross.toLocaleString()}</strong> in employment income as ${profile.label} (${provName}):`
-        : `At <strong>$${gross.toLocaleString()}</strong> with ${profile.label} in ${provName}:`;
+        ? `At <strong>$${gross.toLocaleString()}</strong> in employment income as ${profileLabel} (${provName})${state.rrsp > 0 ? ` with a <strong>$${state.rrsp.toLocaleString()}</strong> RRSP contribution` : ''}:`
+        : `At <strong>$${gross.toLocaleString()}</strong> with ${profileLabel} in ${provName}${state.rrsp > 0 ? `, with a <strong>$${state.rrsp.toLocaleString()}</strong> RRSP contribution` : ''}:`;
 
-      // Build numbered points dynamically based on what actually matters at this bracket
       const points = [];
       points.push(
         `<strong>1. Your next $1,000 returns about $${(1000 - losePerK).toLocaleString()} to your pocket.</strong>
@@ -885,18 +1075,18 @@
       if (profile.type === 'family' && ccb > 1) {
         points.push(
           `<strong>3. The CCB phase-out invisibly removes another $${Math.round(ccb).toLocaleString()}.</strong>
-           You won't see this on your paystub. It arrives months later as a smaller monthly CCB deposit, recalculated each July from your prior-year tax return.`
+           You won't see this on your paystub — it arrives months later as a smaller CCB deposit, recalculated each July from your prior-year tax return.`
         );
-      } else if (profile.type === 'family') {
+      } else if (profile.type === 'family' && (profile.kidsUnder6 + profile.kids6to17) > 0) {
         points.push(
-          `<strong>3. No CCB clawback yet.</strong>
-           Your income is still below the $38,237 phase-out threshold — every benefit dollar stays intact at this bracket.`
+          `<strong>3. No CCB clawback at this bracket.</strong>
+           Your AFNI is still below the $38,237 phase-out threshold — every benefit dollar stays intact.`
         );
       }
       if (profile.type === 'senior' && gis > 1) {
         points.push(
           `<strong>3. The GIS clawback strips out $${Math.round(gis).toLocaleString()} more.</strong>
-           For every dollar of employment income above the $5,000 full exemption (plus $10,000 partial), Service Canada reduces your GIS by 50¢ — one of the harshest implicit rates in the entire tax system.`
+           For every dollar of employment income above the $5,000 full exemption (plus $10,000 partial), Service Canada reduces your GIS by 50¢ — one of the harshest implicit rates in the system.`
         );
       } else if (profile.type === 'senior') {
         points.push(
@@ -907,11 +1097,19 @@
       points.push(
         `<strong>4. Real effective bite: <span style="color:#b45309;">${emtrPct}%</span> of your raise.</strong>
          ${emtrPct >= 50
-           ? "That's higher than the top federal tax bracket — and it lands on a family that statistically can least afford the surprise."
+           ? "That's higher than the top federal tax bracket — and it lands on a household that statistically can least afford the surprise."
            : emtrPct >= 35
            ? "Notably above the headline marginal tax rate quoted in most public guides — because the clawback layer is rarely added to the picture."
-           : "Most of the bite here is just regular income tax. The benefit clawback is still small at this income level."}`
+           : "Most of the bite here is just regular income tax. The benefit clawback is small at this income level."}`
       );
+
+      if (state.rrsp > 0) {
+        const v = rrspImmediateValue(profile, gross, state.rrsp, state.province);
+        points.push(
+          `<strong>5. Your $${state.rrsp.toLocaleString()} RRSP contribution is worth <span style="color:#047857;">$${Math.round(v.total).toLocaleString()}</span> today.</strong>
+           Tax savings: $${Math.round(v.taxSavings).toLocaleString()}. Restored ${profile.type === 'senior' ? 'GIS' : 'CCB'}: $${Math.round(v.benefitGain).toLocaleString()}. That's a <strong>${Math.round(v.total / state.rrsp * 100)}% immediate return</strong> — before any market growth inside the RRSP.`
+        );
+      }
 
       document.getElementById('live-explainer').innerHTML =
         `<p class="text-slate-700">${heading}</p>` +
@@ -919,7 +1117,39 @@
     }
 
     // ============================================================
-    //  6. LEAKY PIPELINE
+    //  6. RRSP CARD READOUT
+    // ============================================================
+    function renderRrspReadout() {
+      const el = document.getElementById('rrsp-readout');
+      if (state.rrsp <= 0) { el.style.display = 'none'; return; }
+      el.style.display = '';
+      const profile = getEffectiveProfile();
+      const v = rrspImmediateValue(profile, state.bracket, state.rrsp, state.province);
+      const ratePct = Math.round(v.total / state.rrsp * 100);
+      el.innerHTML = `
+        <div class="font-bold text-emerald-900 mb-2">Today's value of your $${state.rrsp.toLocaleString()} contribution: <span class="text-emerald-700">$${Math.round(v.total).toLocaleString()}</span></div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="bg-white border border-emerald-200 rounded-lg p-3">
+            <div class="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Tax Refund</div>
+            <div class="text-xl font-extrabold text-emerald-700 num mt-1">$${Math.round(v.taxSavings).toLocaleString()}</div>
+          </div>
+          <div class="bg-white border border-emerald-200 rounded-lg p-3">
+            <div class="text-xs font-semibold text-emerald-800 uppercase tracking-wider">${profile.type === 'senior' ? 'GIS' : 'CCB'} Recovered</div>
+            <div class="text-xl font-extrabold text-emerald-700 num mt-1">$${Math.round(v.benefitGain).toLocaleString()}</div>
+          </div>
+          <div class="bg-white border border-emerald-200 rounded-lg p-3">
+            <div class="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Immediate Return</div>
+            <div class="text-xl font-extrabold text-emerald-700 num mt-1">${ratePct}%</div>
+          </div>
+        </div>
+        <p class="text-xs text-emerald-800 mt-3 leading-relaxed">
+          That's the value the moment the contribution clears — before any investment growth inside the RRSP. Tax refund arrives next April; benefit recovery flows through the following July's CCB ${profile.type === 'senior' ? '/ quarterly GIS' : ''} recalculation.
+        </p>
+      `;
+    }
+
+    // ============================================================
+    //  7. LEAKY PIPELINE
     // ============================================================
     function fmt$(n) {
       const r = Math.round(n);
@@ -952,7 +1182,7 @@
     }
 
     // ============================================================
-    //  7. SUMMARY CARDS
+    //  8. SUMMARY CARDS
     // ============================================================
     function renderSummary(scenario) {
       const kept = Math.max(0, scenario.losses.kept);
@@ -965,7 +1195,7 @@
         if (p === 1) stat.dataset.val = String(kept);
       });
       const lossPct = Math.round((1 - kept / 2500) * 100);
-      const profile = PROFILES[state.profile];
+      const profile = getEffectiveProfile();
       caption.textContent = profile.type === 'senior'
         ? 'After income tax and the 50% GIS clawback on earnings above the exemption.'
         : 'After federal + provincial income tax and the CCB phase-out.';
@@ -984,85 +1214,181 @@
     }
 
     // ============================================================
-    //  8. MASTER RENDER
+    //  9. MASTER RENDER
     // ============================================================
     function render() {
-      const points = curveSamples(state.profile, state.province);
+      const profile = getEffectiveProfile();
+
+      // Main solid curve: at current state (with RRSP applied)
+      const points = curveSamplesAt(profile, state.province, state.rrsp);
+      // Ghost curve: counterfactual "without RRSP" — only when rrsp > 0
+      const ghostPoints = state.rrsp > 0
+        ? curveSamplesAt(profile, state.province, 0)
+        : null;
       const xMax = points[points.length - 1].xMax;
+
       updateXTicks(xMax);
-      animateCurveTo(points, xMax);
+      animateCurveTo(points, ghostPoints, xMax);
       setTimeout(() => {
         placeMarker(xMax, points);
         placeCliffLabel(points, xMax);
         placeAnnotation(points, xMax);
       }, 60);
 
-      const scenario = computeScenario(state.profile, state.bracket, state.province);
+      updateChartLegend();
+
+      const scenario = computeScenarioV2(profile, state.bracket, state.rrsp, state.province);
       renderPipeline(scenario);
       renderSummary(scenario);
       renderExplainer(scenario);
+      renderRrspReadout();
     }
 
     // ============================================================
-    //  9. WIRE UI
+    // 10. UI WIRING
     // ============================================================
-    document.getElementById('profile-grid').addEventListener('click', (e) => {
-      const card = e.target.closest('.profile-card');
-      if (!card) return;
-      document.querySelectorAll('.profile-card').forEach(c => c.classList.remove('active'));
-      card.classList.add('active');
-      state.profile = card.dataset.profile;
-      rebuildBracketPills();
-      render();
-    });
 
+    function syncProfileActive() {
+      // Highlight profile card iff state matches a preset exactly
+      document.querySelectorAll('.profile-card').forEach(c => {
+        const preset = PRESETS[c.dataset.profile];
+        const match = preset && preset.isSenior === state.isSenior
+          && preset.kidsUnder6 === state.kidsUnder6
+          && preset.kids6to17 === state.kids6to17;
+        c.classList.toggle('active', !!match);
+      });
+    }
+    function syncIncomeUI() {
+      const inp = document.getElementById('income-input');
+      if (parseInt(inp.value, 10) !== state.bracket) inp.value = state.bracket;
+      // active pill matching
+      document.querySelectorAll('.bracket-pill').forEach(p => {
+        p.classList.toggle('active', parseInt(p.dataset.bracket, 10) === state.bracket);
+      });
+      document.getElementById('income-label').textContent =
+        state.isSenior ? 'Annual Employment Income' : 'Annual Gross Income';
+    }
+    function syncFamilyUI() {
+      const familyEl = document.getElementById('family-controls');
+      // Show/hide kid steppers based on senior mode
+      const steppers = familyEl.querySelectorAll('div > label');
+      // Always show province; conditionally show kid steppers
+      const childCols = familyEl.children;
+      // childCols[0] = under6, [1] = 6-17, [2] = province
+      childCols[0].style.display = state.isSenior ? 'none' : '';
+      childCols[1].style.display = state.isSenior ? 'none' : '';
+      document.getElementById('display-kidsUnder6').textContent = state.kidsUnder6;
+      document.getElementById('display-kids6to17').textContent = state.kids6to17;
+      // Disable steppers at bounds
+      familyEl.querySelectorAll('.stepper-btn').forEach(btn => {
+        const field = btn.dataset.stepper, delta = parseInt(btn.dataset.delta, 10);
+        if (!field) return;
+        const cur = state[field];
+        const next = cur + delta;
+        btn.disabled = next < 0 || next > 4;
+      });
+    }
     function rebuildBracketPills() {
       const row = document.getElementById('bracket-row');
-      const provGroup = row.querySelector('.ml-auto');
-      row.querySelectorAll('.bracket-pill').forEach(p => p.remove());
-
-      const isSenior = PROFILES[state.profile].type === 'senior';
-      const set = isSenior
-        ? [
-            { val: 5000,  label: 'No Earnings · $5,000' },
-            { val: 15000, label: 'Part-Time · $15,000' },
-            { val: 25000, label: 'Active Work · $25,000' }
-          ]
-        : [
-            { val: 35000, label: 'Entry Level · $35,000' },
-            { val: 55000, label: 'Mid-Career · $55,000' },
-            { val: 75000, label: 'Stepping Up · $75,000' }
-          ];
-
-      if (!set.find(p => p.val === state.bracket)) state.bracket = set[1].val;
-
+      row.innerHTML = '';
+      const set = state.isSenior
+        ? [{ val: 5000, label: '$5K' }, { val: 15000, label: '$15K' }, { val: 25000, label: '$25K' }]
+        : [{ val: 35000, label: '$35K' }, { val: 55000, label: '$55K' }, { val: 75000, label: '$75K' }];
       set.forEach(p => {
         const btn = document.createElement('button');
-        btn.className = 'bracket-pill' + (p.val === state.bracket ? ' active' : '');
+        btn.className = 'bracket-pill';
         btn.dataset.bracket = p.val;
-        btn.textContent = p.label.replace(' · ', '  ·  ');
-        row.insertBefore(btn, provGroup);
+        btn.textContent = p.label;
+        row.appendChild(btn);
       });
     }
 
-    document.getElementById('bracket-row').addEventListener('click', (e) => {
-      const pill = e.target.closest('.bracket-pill');
-      if (!pill) return;
-      document.querySelectorAll('.bracket-pill').forEach(p => p.classList.remove('active'));
-      pill.classList.add('active');
-      state.bracket = parseInt(pill.dataset.bracket, 10);
+    // Profile card click → load preset
+    document.getElementById('profile-grid').addEventListener('click', (e) => {
+      const card = e.target.closest('.profile-card');
+      if (!card) return;
+      const preset = PRESETS[card.dataset.profile];
+      const wasSenior = state.isSenior;
+      state.profile = card.dataset.profile;
+      state.isSenior = preset.isSenior;
+      state.kidsUnder6 = preset.kidsUnder6;
+      state.kids6to17 = preset.kids6to17;
+      if (wasSenior !== state.isSenior) {
+        // Income default snaps when crossing into/out of senior mode
+        state.bracket = state.isSenior ? 15000 : 35000;
+        rebuildBracketPills();
+      }
+      syncProfileActive();
+      syncIncomeUI();
+      syncFamilyUI();
       render();
     });
 
+    // Income input
+    document.getElementById('income-input').addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      if (Number.isFinite(v) && v >= 0) {
+        state.bracket = Math.min(v, 200000);
+        syncIncomeUI();
+        render();
+      }
+    });
+
+    // Bracket pill quick-jumps (delegated; pills are rebuilt for senior vs family)
+    document.getElementById('bracket-row').addEventListener('click', (e) => {
+      const pill = e.target.closest('.bracket-pill');
+      if (!pill) return;
+      state.bracket = parseInt(pill.dataset.bracket, 10);
+      syncIncomeUI();
+      render();
+    });
+
+    // Kid steppers
+    document.getElementById('family-controls').addEventListener('click', (e) => {
+      const btn = e.target.closest('.stepper-btn[data-stepper]');
+      if (!btn || btn.disabled) return;
+      const field = btn.dataset.stepper;
+      const delta = parseInt(btn.dataset.delta, 10);
+      const next = state[field] + delta;
+      if (next < 0 || next > 4) return;
+      state[field] = next;
+      syncProfileActive();
+      syncFamilyUI();
+      render();
+    });
+
+    // Province
     document.getElementById('province-select').addEventListener('change', (e) => {
       state.province = e.target.value;
       render();
     });
 
+    // RRSP input
+    const rrspInput = document.getElementById('rrsp-input');
+    rrspInput.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      if (Number.isFinite(v) && v >= 0) {
+        state.rrsp = Math.min(v, 30000);
+        render();
+      }
+    });
+    document.querySelectorAll('[data-rrsp-delta]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const delta = parseInt(btn.dataset.rrspDelta, 10);
+        state.rrsp = Math.max(0, Math.min(30000, state.rrsp + delta));
+        rrspInput.value = state.rrsp;
+        render();
+      });
+    });
+
     // ============================================================
-    // 10. INIT
+    // 11. INIT
     // ============================================================
     buildStaticChartChrome();
+    rebuildBracketPills();
+    syncProfileActive();
+    syncIncomeUI();
+    syncFamilyUI();
     render();
 
   })();
