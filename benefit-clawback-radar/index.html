@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Canadian Benefit Clawback Radar</title>
+
+  <!-- Family conventions: Tailwind CDN + Inter. Light theme matching tfsa-snowballer. -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+
+    /* ---------- PROFILE CARDS ---------- */
+    .profile-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 20px;
+      cursor: pointer;
+      transition: transform .25s ease, border-color .25s, box-shadow .25s, background-color .25s;
+      text-align: left;
+    }
+    .profile-card:hover {
+      transform: translateY(-2px);
+      border-color: #c7d2fe;
+      box-shadow: 0 8px 20px -10px rgba(79, 70, 229, 0.18);
+    }
+    .profile-card.active {
+      border-color: #4f46e5;
+      background: linear-gradient(180deg, #eef2ff 0%, #ffffff 100%);
+      box-shadow: 0 10px 24px -12px rgba(79, 70, 229, 0.35);
+    }
+    .profile-card .icon {
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px;
+      background: #eef2ff;
+      color: #4f46e5;
+      margin-bottom: 12px;
+      font-size: 20px;
+    }
+    .profile-card.active .icon { background: #4f46e5; color: #ffffff; }
+
+    /* ---------- BRACKET PILLS ---------- */
+    .bracket-pill {
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      color: #475569;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all .2s ease;
+    }
+    .bracket-pill:hover { border-color: #c7d2fe; color: #4f46e5; }
+    .bracket-pill.active {
+      background: #4f46e5;
+      border-color: #4f46e5;
+      color: #ffffff;
+      box-shadow: 0 6px 16px -8px rgba(79, 70, 229, 0.55);
+    }
+    select.province-select {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      color: #1e293b;
+      padding: 9px 12px;
+      border-radius: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      outline: none;
+      transition: border-color .2s;
+    }
+    select.province-select:focus { border-color: #4f46e5; box-shadow: 0 0 0 4px rgba(79,70,229,0.1); }
+
+    /* ---------- ROLLERCOASTER ---------- */
+    .chart-wrap svg { display: block; width: 100%; height: auto; }
+
+    /* ---------- LEAKY PIPELINE ---------- */
+    .pipe-row { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+    .pipe-bar {
+      flex: 1;
+      height: 22px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .pipe-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width .55s cubic-bezier(.2,.8,.2,1);
+    }
+    .pipe-label { width: 170px; font-size: 13.5px; color: #334155; font-weight: 600; }
+    .pipe-amount { width: 110px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 14px; color: #1e293b; }
+
+    /* color tokens — light theme, distinguishable hues */
+    .c-keep { background: #10b981; }     /* emerald — money you keep */
+    .c-fed  { background: #64748b; }     /* slate 500 — federal tax */
+    .c-prov { background: #94a3b8; }     /* slate 400 — provincial tax */
+    .c-ccb  { background: #f59e0b; }     /* amber — CCB clawback */
+    .c-gis  { background: #e11d48; }     /* rose — GIS clawback */
+
+    .amount-keep { color: #047857; }
+    .amount-fed  { color: #475569; }
+    .amount-prov { color: #64748b; }
+    .amount-ccb  { color: #b45309; }
+    .amount-gis  { color: #9f1239; }
+
+    /* legend dots */
+    .dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; margin-right: 6px; vertical-align: middle; }
+
+    /* ---------- EXPANDER ---------- */
+    .expander-summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 8px 0;
+      color: #475569;
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .expander-summary::-webkit-details-marker { display: none; }
+    .expander-summary::before {
+      content: '+';
+      display: inline-block;
+      width: 20px; height: 20px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      text-align: center;
+      line-height: 18px;
+      color: #475569;
+      font-weight: 400;
+    }
+    details[open] .expander-summary::before { content: '−'; }
+
+    /* num helper */
+    .num { font-variant-numeric: tabular-nums; }
+
+    /* print */
+    @media print {
+      body { background-color: white !important; }
+      .no-print { display: none !important; }
+      .shadow-sm, .shadow-lg { box-shadow: none !important; border: 1px solid #e2e8f0; }
+    }
+  </style>
+</head>
+
+<body class="bg-[#f8fafc] min-h-screen py-10 text-slate-800">
+
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+
+    <!-- ============================ HERO ============================ -->
+    <header class="text-center space-y-3">
+      <h1 class="text-4xl font-extrabold tracking-tight text-slate-900">The Canadian Benefit Clawback Radar</h1>
+      <p class="text-lg text-slate-600 max-w-2xl mx-auto">
+        Earning your next dollar isn't always worth a dollar. See exactly where Canada's income tax + non-taxable benefit clawbacks combine into a steep, hidden tax on low and middle incomes.
+      </p>
+    </header>
+
+    <!-- ============================ EXPLAINER CARDS (match tfsa-snowballer pattern) ============================ -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm text-slate-700 leading-relaxed flex flex-col justify-center">
+        <h2 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+          <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          How to use this tool
+        </h2>
+        <p class="text-sm">
+          Pick a household situation and an income bracket below. The chart, pipeline, and summary cards all update together to show how much of your next dollar earned actually lands in your pocket — after federal and provincial income tax, <em>and</em> after the Canada Child Benefit or GIS gets quietly reduced behind the scenes.
+        </p>
+      </div>
+
+      <div class="bg-amber-50 border border-amber-200 p-6 rounded-2xl shadow-sm text-amber-900 leading-relaxed">
+        <h2 class="font-bold text-amber-800 mb-2 flex items-center gap-2">
+          <svg class="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          Why these clawbacks matter
+        </h2>
+        <div class="text-sm space-y-3">
+          <p>
+            <strong>1. They're invisible on your paystub.</strong> CCB and GIS reductions show up months later through the CRA — not in your withholding. A raise can quietly cost more than it adds.
+          </p>
+          <p>
+            <strong>2. They stack with regular tax.</strong> A 20.5% federal bracket plus a 9.15% provincial bracket plus a 13.5% CCB phase-out is a real effective marginal rate of ~43% on the next dollar earned.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================ SECTION A: PROFILE CARDS ============================ -->
+    <section class="bg-white border border-slate-200 rounded-2xl shadow-sm shadow-slate-200/50 p-6 sm:p-8 space-y-5">
+      <h2 class="font-bold text-slate-900 text-lg">Step 1 — Pick a situation</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="profile-grid">
+        <button class="profile-card active" data-profile="single-parent-1-young">
+          <div class="icon">👶</div>
+          <div class="font-bold text-slate-900 text-base mb-1">Single Parent</div>
+          <div class="text-sm text-slate-600 leading-relaxed">One child under 6. Eligible for the highest CCB rate — and the steepest clawback curve.</div>
+        </button>
+        <button class="profile-card" data-profile="working-family-2-mixed">
+          <div class="icon">👨‍👩‍👧‍👦</div>
+          <div class="font-bold text-slate-900 text-base mb-1">Working Family</div>
+          <div class="text-sm text-slate-600 leading-relaxed">Two kids, mixed ages (one under 6, one 6–17). Hits both CCB clawback tiers.</div>
+        </button>
+        <button class="profile-card" data-profile="senior-gis">
+          <div class="icon">🌿</div>
+          <div class="font-bold text-slate-900 text-base mb-1">Low-Income Senior</div>
+          <div class="text-sm text-slate-600 leading-relaxed">Receiving OAS + GIS. The 50¢-on-the-dollar GIS clawback is one of the harshest in the system.</div>
+        </button>
+      </div>
+    </section>
+
+    <!-- ============================ SECTION B: BRACKETS + PROVINCE ============================ -->
+    <section class="bg-white border border-slate-200 rounded-2xl shadow-sm shadow-slate-200/50 p-6 sm:p-8 space-y-5">
+      <h2 class="font-bold text-slate-900 text-lg">Step 2 — Pick an income bracket and province</h2>
+      <div class="flex flex-wrap items-center gap-3" id="bracket-row">
+        <button class="bracket-pill active" data-bracket="35000">Entry Level&nbsp;&nbsp;·&nbsp;&nbsp;$35,000</button>
+        <button class="bracket-pill" data-bracket="55000">Mid-Career&nbsp;&nbsp;·&nbsp;&nbsp;$55,000</button>
+        <button class="bracket-pill" data-bracket="75000">Stepping Up&nbsp;&nbsp;·&nbsp;&nbsp;$75,000</button>
+        <div class="flex items-center gap-2 ml-auto">
+          <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Province</span>
+          <select id="province-select" class="province-select">
+            <option value="ON">Ontario</option>
+            <option value="BC">British Columbia</option>
+            <option value="AB">Alberta</option>
+            <option value="QC">Quebec</option>
+            <option value="NS">Nova Scotia</option>
+            <option value="MB">Manitoba</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ ROLLERCOASTER ============================ -->
+    <section class="bg-white border border-slate-200 rounded-2xl shadow-sm shadow-slate-200/50 p-6 sm:p-8">
+      <div class="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <h3 class="font-bold text-slate-900 text-lg">The Disposable Income Rollercoaster</h3>
+          <p class="text-sm text-slate-600 mt-1">How many cents of each <em>next</em> dollar earned actually reach your pocket, across the income spectrum.</p>
+        </div>
+        <div class="text-xs text-slate-500 flex items-center gap-4 font-medium">
+          <span><span class="dot" style="background:#4f46e5;"></span>Take-home rate</span>
+          <span><span class="dot" style="background:#f59e0b;"></span>Cliff zone</span>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <svg id="rollercoaster" viewBox="0 0 800 380" preserveAspectRatio="none" aria-label="Take-home rate curve"></svg>
+      </div>
+    </section>
+
+    <!-- ============================ "WHAT'S HAPPENING AT YOUR BRACKET" — live explainer card ============================ -->
+    <section class="bg-white border border-slate-200 p-6 sm:p-8 rounded-2xl shadow-sm shadow-slate-200/50 text-slate-700 leading-relaxed">
+      <h2 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
+        <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        What's happening at your bracket
+      </h2>
+      <div id="live-explainer" class="text-sm space-y-3">
+        <!-- filled by render() -->
+      </div>
+    </section>
+
+    <!-- ============================ LEAKY PIPELINE ============================ -->
+    <section class="bg-white border border-slate-200 rounded-2xl shadow-sm shadow-slate-200/50 p-6 sm:p-8">
+      <div class="flex items-baseline justify-between mb-5 flex-wrap gap-2">
+        <div>
+          <h3 class="font-bold text-slate-900 text-lg">The Leaky Pipeline</h3>
+          <p class="text-sm text-slate-600 mt-1">A hypothetical <strong class="text-slate-900">$2,500 raise</strong> at your selected income. Watch what survives each layer.</p>
+        </div>
+        <div class="text-xs text-slate-500 flex items-center gap-3 flex-wrap font-medium">
+          <span><span class="dot c-keep"></span>Kept</span>
+          <span><span class="dot c-fed"></span>Federal tax</span>
+          <span><span class="dot c-prov"></span>Provincial tax</span>
+          <span><span class="dot c-ccb"></span>CCB loss</span>
+          <span><span class="dot c-gis"></span>GIS loss</span>
+        </div>
+      </div>
+
+      <div id="pipeline">
+        <div class="pipe-row"><div class="pipe-label">Gross Raise</div>
+          <div class="pipe-bar"><div class="pipe-fill" style="width:100%; background:#cbd5e1;"></div></div>
+          <div class="pipe-amount">$2,500</div></div>
+
+        <div class="pipe-row"><div class="pipe-label">− Federal Tax</div>
+          <div class="pipe-bar"><div class="pipe-fill c-fed" id="bar-fed" style="width:0%"></div></div>
+          <div class="pipe-amount amount-fed" id="amt-fed">$0</div></div>
+
+        <div class="pipe-row"><div class="pipe-label">− Provincial Tax</div>
+          <div class="pipe-bar"><div class="pipe-fill c-prov" id="bar-prov" style="width:0%"></div></div>
+          <div class="pipe-amount amount-prov" id="amt-prov">$0</div></div>
+
+        <div class="pipe-row"><div class="pipe-label">− CCB Reduction</div>
+          <div class="pipe-bar"><div class="pipe-fill c-ccb" id="bar-ccb" style="width:0%"></div></div>
+          <div class="pipe-amount amount-ccb" id="amt-ccb">$0</div></div>
+
+        <div class="pipe-row"><div class="pipe-label">− GIS Reduction</div>
+          <div class="pipe-bar"><div class="pipe-fill c-gis" id="bar-gis" style="width:0%"></div></div>
+          <div class="pipe-amount amount-gis" id="amt-gis">$0</div></div>
+
+        <div class="pipe-row" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid #e2e8f0;">
+          <div class="pipe-label text-slate-900 font-bold">= You Actually Keep</div>
+          <div class="pipe-bar"><div class="pipe-fill c-keep" id="bar-keep" style="width:0%"></div></div>
+          <div class="pipe-amount amount-keep" id="amt-keep">$0</div></div>
+      </div>
+    </section>
+
+    <!-- ============================ DISCLAIMER #1 — INLINE WARNING ============================ -->
+    <aside class="bg-amber-50 border border-amber-200 p-5 sm:p-6 rounded-2xl shadow-sm text-amber-900 leading-relaxed">
+      <h2 class="font-bold text-amber-800 mb-2 flex items-center gap-2">
+        <svg class="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        Notice on Benefit Indexation
+      </h2>
+      <p class="text-sm">
+        CCB base amounts and phase-out thresholds are indexed to inflation annually every July. GIS amounts are updated quarterly by Service Canada. This visualization uses the <strong>2026 parameter frameworks</strong>. A minor change in your <strong>Line 23600 Net Income</strong> can cause substantial variance in actual government distributions.
+      </p>
+    </aside>
+
+    <!-- ============================ SUMMARY CARDS — 3-card style from tfsa-snowballer ============================ -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-indigo-600 text-white p-6 sm:p-8 rounded-2xl shadow-lg shadow-indigo-600/20 transform transition duration-300 hover:-translate-y-1">
+        <p class="text-indigo-100 text-sm font-semibold tracking-wide uppercase mb-2">Gross Raise on Paper</p>
+        <p class="text-4xl font-extrabold num">$2,500</p>
+        <p class="text-xs text-indigo-100 mt-2 leading-snug">What HR offers. What payroll deposits before reality intervenes.</p>
+      </div>
+      <div class="bg-white border border-slate-200 p-6 sm:p-8 rounded-2xl shadow-sm transform transition duration-300 hover:-translate-y-1">
+        <p class="text-slate-600 text-sm font-semibold tracking-wide uppercase mb-2">True Net Take-Home</p>
+        <p class="text-4xl font-extrabold text-slate-900 num" id="net-stat">$0</p>
+        <p class="text-xs text-slate-500 mt-2 leading-snug" id="net-caption">After all taxes and federal benefit clawbacks.</p>
+      </div>
+      <div class="bg-amber-50 border border-amber-200 p-6 sm:p-8 rounded-2xl shadow-sm transform transition duration-300 hover:-translate-y-1">
+        <p class="text-amber-800 text-sm font-semibold tracking-wide uppercase mb-2">Effective Marginal Rate</p>
+        <p class="text-4xl font-extrabold text-amber-600 num" id="emtr-stat">0%</p>
+        <p class="text-xs text-amber-800 mt-2 leading-snug" id="emtr-caption">The real bite out of your next dollar earned.</p>
+      </div>
+    </section>
+
+    <!-- ============================ FOOTER + DISCLAIMER #2 ============================ -->
+    <footer class="pt-6 mt-8 border-t border-slate-200">
+      <details>
+        <summary class="expander-summary">LEGAL DISCLAIMER &nbsp;·&nbsp; Click to expand</summary>
+        <p class="text-[13px] text-slate-600 leading-relaxed pt-2 pb-2">
+          <strong class="text-slate-800">Legal Disclaimer:</strong> This application is intended solely for financial literacy illustration and educational purposes. It does not constitute formal accounting, tax filing, or legal financial planning advice. True calculation metrics rely on complex variables, including provincial low-income tax reductions, nested credits, shared custody arrangements, and marital status changes. Always cross-verify data models with official CRA schedules, Service Canada tables, or a Certified Professional Accountant (CPA) before making significant employment or income shifts.
+        </p>
+      </details>
+      <div class="text-[11px] text-slate-400 mt-4 tracking-wider uppercase">© Finlit Tools · Clawback Radar v1 · 2026 Parameter Frame</div>
+    </footer>
+
+  </div>
+
+  <!-- ============================================================
+       SCRIPT
+       Architecture: pure `BenefitMath` module (exposed on window for
+       devtools spot-checks per plan) + thin render layer that reads
+       from it. All animation through one cancelableTween() helper.
+       ============================================================ -->
+  <script>
+  (function () {
+    'use strict';
+
+    // ============================================================
+    //  1. BENEFIT MATH — pure, no DOM dependency (UNCHANGED from v1)
+    // ============================================================
+
+    // CCB — July 2026 to June 2027 benefit year
+    const CCB = {
+      maxUnder6: 8157,
+      max6to17:  6883,
+      tier1Threshold: 38237,
+      tier2Threshold: 82847,
+      tier1Rates: { 1: 0.070, 2: 0.135, 3: 0.190, 4: 0.230 },
+      tier2Rates: { 1: 0.032, 2: 0.057, 3: 0.080, 4: 0.095 }
+    };
+
+    // GIS — Q1 2026 single-senior reference
+    const GIS = {
+      maxAnnual: 1105.43 * 12,
+      earningsExemptFull: 5000,
+      earningsExemptPartial: 10000,
+      clawbackRate: 0.50
+    };
+
+    // 2026 federal brackets (indexed estimate; BPA as 15% non-refundable credit)
+    const FED_BPA_2026 = 16452;
+    const FED_BRACKETS_2026 = [
+      { upTo: 58524,  rate: 0.150 },
+      { upTo: 117049, rate: 0.205 },
+      { upTo: 181440, rate: 0.260 },
+      { upTo: 258463, rate: 0.290 },
+      { upTo: Infinity, rate: 0.330 }
+    ];
+
+    // 2026 provincial brackets (simplified — surtaxes/health premiums omitted by design)
+    const PROV = {
+      ON: { bpa: 13002, brackets: [
+        { upTo: 52475,  rate: 0.0505 },
+        { upTo: 104950, rate: 0.0915 },
+        { upTo: 150000, rate: 0.1116 },
+        { upTo: 220000, rate: 0.1216 },
+        { upTo: Infinity, rate: 0.1316 }
+      ]},
+      BC: { bpa: 12932, brackets: [
+        { upTo: 50264,  rate: 0.0506 },
+        { upTo: 100528, rate: 0.0770 },
+        { upTo: 115408, rate: 0.1050 },
+        { upTo: 140131, rate: 0.1229 },
+        { upTo: 189982, rate: 0.1470 },
+        { upTo: 264933, rate: 0.1680 },
+        { upTo: Infinity, rate: 0.2050 }
+      ]},
+      AB: { bpa: 22323, brackets: [
+        { upTo: 60000,  rate: 0.080 },
+        { upTo: 151234, rate: 0.100 },
+        { upTo: 181481, rate: 0.120 },
+        { upTo: 241974, rate: 0.130 },
+        { upTo: 322632, rate: 0.140 },
+        { upTo: Infinity, rate: 0.150 }
+      ]},
+      QC: { bpa: 18571, brackets: [
+        { upTo: 54322,  rate: 0.140 },
+        { upTo: 108652, rate: 0.190 },
+        { upTo: 132191, rate: 0.240 },
+        { upTo: Infinity, rate: 0.2575 }
+      ]},
+      NS: { bpa: 11744, brackets: [
+        { upTo: 29590,  rate: 0.0879 },
+        { upTo: 59180,  rate: 0.1495 },
+        { upTo: 93000,  rate: 0.1667 },
+        { upTo: 150000, rate: 0.1750 },
+        { upTo: Infinity, rate: 0.2100 }
+      ]},
+      MB: { bpa: 15969, brackets: [
+        { upTo: 47000,  rate: 0.1080 },
+        { upTo: 100000, rate: 0.1275 },
+        { upTo: Infinity, rate: 0.1740 }
+      ]}
+    };
+
+    const PROFILES = {
+      'single-parent-1-young': { type: 'family', kidsUnder6: 1, kids6to17: 0, label: 'one child under 6' },
+      'working-family-2-mixed': { type: 'family', kidsUnder6: 1, kids6to17: 1, label: 'two children (one under 6, one school-age)' },
+      'senior-gis':             { type: 'senior', label: 'a single senior receiving GIS' }
+    };
+    const PROVINCE_NAMES = { ON: 'Ontario', BC: 'British Columbia', AB: 'Alberta', QC: 'Quebec', NS: 'Nova Scotia', MB: 'Manitoba' };
+
+    function bracketTax(income, brackets) {
+      let tax = 0, prev = 0;
+      for (const b of brackets) {
+        if (income <= b.upTo) { tax += (income - prev) * b.rate; return tax; }
+        tax += (b.upTo - prev) * b.rate;
+        prev = b.upTo;
+      }
+      return tax;
+    }
+    function federalTax(income) {
+      const t = bracketTax(income, FED_BRACKETS_2026);
+      return Math.max(0, t - FED_BPA_2026 * 0.15);
+    }
+    function provincialTax(income, provinceCode) {
+      const p = PROV[provinceCode];
+      const t = bracketTax(income, p.brackets);
+      const firstRate = p.brackets[0].rate;
+      return Math.max(0, t - p.bpa * firstRate);
+    }
+    function ccbBenefit(afni, profile) {
+      if (profile.type !== 'family') return 0;
+      const n = profile.kidsUnder6 + profile.kids6to17;
+      if (n === 0) return 0;
+      const max = profile.kidsUnder6 * CCB.maxUnder6 + profile.kids6to17 * CCB.max6to17;
+      const key = Math.min(n, 4);
+      const r1 = CCB.tier1Rates[key], r2 = CCB.tier2Rates[key];
+      if (afni <= CCB.tier1Threshold) return max;
+      if (afni <= CCB.tier2Threshold) return Math.max(0, max - (afni - CCB.tier1Threshold) * r1);
+      const t1Reduction = (CCB.tier2Threshold - CCB.tier1Threshold) * r1;
+      const t2Reduction = (afni - CCB.tier2Threshold) * r2;
+      return Math.max(0, max - t1Reduction - t2Reduction);
+    }
+    function gisBenefit(employmentIncome, profile) {
+      if (profile.type !== 'senior') return 0;
+      let counted;
+      if (employmentIncome <= GIS.earningsExemptFull) counted = 0;
+      else if (employmentIncome <= GIS.earningsExemptFull + GIS.earningsExemptPartial)
+        counted = (employmentIncome - GIS.earningsExemptFull) * 0.5;
+      else counted = GIS.earningsExemptPartial * 0.5
+                  + (employmentIncome - GIS.earningsExemptFull - GIS.earningsExemptPartial);
+      return Math.max(0, GIS.maxAnnual - counted * GIS.clawbackRate);
+    }
+    function totalBenefits(gross, profile) {
+      return ccbBenefit(gross, profile) + gisBenefit(gross, profile);
+    }
+    function disposable(gross, profile, province) {
+      return gross - federalTax(gross) - provincialTax(gross, province) + totalBenefits(gross, profile);
+    }
+    function keepRate(gross, profile, province, step) {
+      step = step || 1000;
+      const d0 = disposable(gross, profile, province);
+      const d1 = disposable(gross + step, profile, province);
+      return (d1 - d0) / step;
+    }
+    function computeScenario(profileKey, gross, province) {
+      const profile = PROFILES[profileKey];
+      const raise = 2500;
+      const fedBefore  = federalTax(gross);
+      const fedAfter   = federalTax(gross + raise);
+      const provBefore = provincialTax(gross, province);
+      const provAfter  = provincialTax(gross + raise, province);
+      const ccbBefore  = ccbBenefit(gross, profile);
+      const ccbAfter   = ccbBenefit(gross + raise, profile);
+      const gisBefore  = gisBenefit(gross, profile);
+      const gisAfter   = gisBenefit(gross + raise, profile);
+      return {
+        gross, raise, province, profileKey, profile,
+        losses: {
+          fed:  fedAfter  - fedBefore,
+          prov: provAfter - provBefore,
+          ccb:  ccbBefore - ccbAfter,
+          gis:  gisBefore - gisAfter,
+          kept: raise - (fedAfter - fedBefore) - (provAfter - provBefore) - (ccbBefore - ccbAfter) - (gisBefore - gisAfter)
+        }
+      };
+    }
+    function curveSamples(profileKey, province) {
+      const profile = PROFILES[profileKey];
+      const out = [];
+      const xMax = profile.type === 'senior' ? 40000 : 120000;
+      const step = profile.type === 'senior' ? 500 : 1500;
+      for (let x = 0; x <= xMax; x += step) {
+        out.push({ x, y: Math.max(-0.2, Math.min(1.2, keepRate(x, profile, province, 500))), xMax });
+      }
+      return out;
+    }
+
+    window.BenefitMath = {
+      computeScenario, curveSamples, ccbBenefit, gisBenefit,
+      federalTax, provincialTax, disposable, keepRate,
+      CONST: { CCB, GIS, FED_BPA_2026, FED_BRACKETS_2026, PROV, PROFILES }
+    };
+
+    // ============================================================
+    //  2. STATE
+    // ============================================================
+    const state = { profile: 'single-parent-1-young', bracket: 35000, province: 'ON' };
+
+    // ============================================================
+    //  3. ANIMATION HELPER
+    // ============================================================
+    function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3)/2; }
+    const tweenCancellers = new WeakMap();
+    function cancelableTween(element, ms, onFrame) {
+      const token = {};
+      tweenCancellers.set(element, token);
+      const start = performance.now();
+      function frame(now) {
+        if (tweenCancellers.get(element) !== token) return;
+        const p = Math.min(1, (now - start) / ms);
+        onFrame(easeInOutCubic(p));
+        if (p < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    // ============================================================
+    //  4. ROLLERCOASTER (SVG) — light theme
+    // ============================================================
+    const VB_W = 800, VB_H = 380;
+    const M = { l: 56, r: 24, t: 28, b: 46 };
+    const PW = VB_W - M.l - M.r;
+    const PH = VB_H - M.t - M.b;
+    const svg = document.getElementById('rollercoaster');
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+
+    function buildStaticChartChrome() {
+      svg.innerHTML = '';
+
+      const defs = document.createElementNS(SVG_NS, 'defs');
+      defs.innerHTML = `
+        <linearGradient id="gradCurveArea" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#6366f1" stop-opacity="0.22"/>
+          <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="gradCliff" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#f59e0b" stop-opacity="0.40"/>
+          <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.05"/>
+        </linearGradient>
+      `;
+      svg.appendChild(defs);
+
+      // Plot background
+      const bg = document.createElementNS(SVG_NS, 'rect');
+      bg.setAttribute('x', M.l); bg.setAttribute('y', M.t);
+      bg.setAttribute('width', PW); bg.setAttribute('height', PH);
+      bg.setAttribute('fill', '#f8fafc');
+      bg.setAttribute('rx', '8');
+      svg.appendChild(bg);
+
+      // Y gridlines + labels
+      const gridGroup = document.createElementNS(SVG_NS, 'g');
+      gridGroup.setAttribute('id', 'grid');
+      for (let i = 0; i <= 4; i++) {
+        const y = M.t + (PH * i / 4);
+        const line = document.createElementNS(SVG_NS, 'line');
+        line.setAttribute('x1', M.l); line.setAttribute('x2', M.l + PW);
+        line.setAttribute('y1', y); line.setAttribute('y2', y);
+        line.setAttribute('stroke', '#e2e8f0');
+        line.setAttribute('stroke-dasharray', '2,4');
+        gridGroup.appendChild(line);
+
+        const lbl = document.createElementNS(SVG_NS, 'text');
+        lbl.setAttribute('x', M.l - 8); lbl.setAttribute('y', y + 4);
+        lbl.setAttribute('text-anchor', 'end');
+        lbl.setAttribute('font-size', '10');
+        lbl.setAttribute('font-weight', '500');
+        lbl.setAttribute('fill', '#64748b');
+        lbl.textContent = (100 - i * 25) + '¢';
+        gridGroup.appendChild(lbl);
+      }
+      svg.appendChild(gridGroup);
+
+      const yTitle = document.createElementNS(SVG_NS, 'text');
+      yTitle.setAttribute('x', 12); yTitle.setAttribute('y', M.t + PH/2);
+      yTitle.setAttribute('transform', `rotate(-90 12 ${M.t + PH/2})`);
+      yTitle.setAttribute('text-anchor', 'middle');
+      yTitle.setAttribute('font-size', '10');
+      yTitle.setAttribute('font-weight', '600');
+      yTitle.setAttribute('fill', '#475569');
+      yTitle.setAttribute('letter-spacing', '0.16em');
+      yTitle.textContent = 'KEPT PER NEXT $1';
+      svg.appendChild(yTitle);
+
+      const xTitle = document.createElementNS(SVG_NS, 'text');
+      xTitle.setAttribute('x', M.l + PW/2); xTitle.setAttribute('y', VB_H - 8);
+      xTitle.setAttribute('text-anchor', 'middle');
+      xTitle.setAttribute('font-size', '10');
+      xTitle.setAttribute('font-weight', '600');
+      xTitle.setAttribute('fill', '#475569');
+      xTitle.setAttribute('letter-spacing', '0.16em');
+      xTitle.textContent = 'GROSS ANNUAL INCOME';
+      svg.appendChild(xTitle);
+
+      // Dynamic layers
+      const cliffFill = document.createElementNS(SVG_NS, 'path');
+      cliffFill.setAttribute('id', 'cliff-fill');
+      cliffFill.setAttribute('fill', 'url(#gradCliff)');
+      svg.appendChild(cliffFill);
+
+      const areaFill = document.createElementNS(SVG_NS, 'path');
+      areaFill.setAttribute('id', 'area-fill');
+      areaFill.setAttribute('fill', 'url(#gradCurveArea)');
+      svg.appendChild(areaFill);
+
+      const curve = document.createElementNS(SVG_NS, 'path');
+      curve.setAttribute('id', 'curve');
+      curve.setAttribute('fill', 'none');
+      curve.setAttribute('stroke', '#4f46e5');
+      curve.setAttribute('stroke-width', '2.5');
+      curve.setAttribute('stroke-linejoin', 'round');
+      curve.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(curve);
+
+      const xticks = document.createElementNS(SVG_NS, 'g');
+      xticks.setAttribute('id', 'xticks');
+      svg.appendChild(xticks);
+
+      // Bracket marker
+      const marker = document.createElementNS(SVG_NS, 'g');
+      marker.setAttribute('id', 'bracket-marker');
+      marker.innerHTML = `
+        <line x1="0" y1="${M.t}" x2="0" y2="${M.t + PH}" stroke="#4f46e5" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.7"/>
+        <circle cx="0" cy="0" r="7" fill="#ffffff" stroke="#4f46e5" stroke-width="2.5"/>
+        <circle cx="0" cy="0" r="3" fill="#4f46e5"/>
+      `;
+      svg.appendChild(marker);
+
+      // Cliff label
+      const cliffLabel = document.createElementNS(SVG_NS, 'g');
+      cliffLabel.setAttribute('id', 'cliff-label');
+      // White halo via paint-order: stroke fill — readable even when the curve passes underneath
+      cliffLabel.innerHTML = `
+        <text x="0" y="0" text-anchor="middle" font-size="11" font-weight="700"
+              fill="#b45309" letter-spacing="0.10em"
+              stroke="#ffffff" stroke-width="3.5" paint-order="stroke fill"
+              style="text-transform:uppercase;">
+          THE INVISIBLE CLIFF EDGE
+        </text>
+        <text x="0" y="13" text-anchor="middle" font-size="9.5" fill="#92400e"
+              stroke="#ffffff" stroke-width="3" paint-order="stroke fill">
+          where each next $1 earned vanishes fastest
+        </text>
+      `;
+      svg.appendChild(cliffLabel);
+
+      // Bracket pin tooltip
+      const ann = document.createElementNS(SVG_NS, 'g');
+      ann.setAttribute('id', 'annotation');
+      svg.appendChild(ann);
+    }
+
+    function xScale(x, xMax) { return M.l + (x / xMax) * PW; }
+    function yScale(y) {
+      const clamped = Math.max(0, Math.min(1, y));
+      return M.t + (1 - clamped) * PH;
+    }
+
+    function buildCurvePath(points, xMax) {
+      if (points.length === 0) return '';
+      let d = `M ${xScale(points[0].x, xMax).toFixed(2)} ${yScale(points[0].y).toFixed(2)}`;
+      for (let i = 1; i < points.length; i++) {
+        const px = xScale(points[i].x, xMax), py = yScale(points[i].y);
+        const prevX = xScale(points[i-1].x, xMax), prevY = yScale(points[i-1].y);
+        const midX = (prevX + px) / 2, midY = (prevY + py) / 2;
+        d += ` Q ${prevX.toFixed(2)} ${prevY.toFixed(2)} ${midX.toFixed(2)} ${midY.toFixed(2)}`;
+        if (i === points.length - 1) d += ` L ${px.toFixed(2)} ${py.toFixed(2)}`;
+      }
+      return d;
+    }
+    function buildAreaPath(points, xMax) {
+      if (points.length === 0) return '';
+      const baseY = M.t + PH;
+      let d = buildCurvePath(points, xMax);
+      d += ` L ${xScale(points[points.length - 1].x, xMax).toFixed(2)} ${baseY.toFixed(2)}`;
+      d += ` L ${xScale(points[0].x, xMax).toFixed(2)} ${baseY.toFixed(2)} Z`;
+      return d;
+    }
+    function buildCliffPath(points, xMax) {
+      if (points.length === 0) return '';
+      let minIdx = 0;
+      for (let i = 1; i < points.length; i++) if (points[i].y < points[minIdx].y) minIdx = i;
+      const threshold = Math.min(0.55, points[minIdx].y + 0.10);
+      let lo = minIdx, hi = minIdx;
+      while (lo > 0 && points[lo - 1].y <= threshold) lo--;
+      while (hi < points.length - 1 && points[hi + 1].y <= threshold) hi++;
+      const region = points.slice(lo, hi + 1);
+      return buildAreaPath(region, xMax);
+    }
+
+    let currentPoints = null;
+    function animateCurveTo(nextPoints, xMax) {
+      const fromPoints = currentPoints && currentPoints.length === nextPoints.length
+        ? currentPoints
+        : nextPoints.map(p => ({ x: p.x, y: 1 }));
+      const curveEl = document.getElementById('curve');
+      const areaEl  = document.getElementById('area-fill');
+      const cliffEl = document.getElementById('cliff-fill');
+
+      cancelableTween(curveEl, 700, (p) => {
+        const interp = nextPoints.map((np, i) => ({
+          x: np.x,
+          y: fromPoints[i].y + (np.y - fromPoints[i].y) * p
+        }));
+        curveEl.setAttribute('d', buildCurvePath(interp, xMax));
+        areaEl.setAttribute('d',  buildAreaPath(interp, xMax));
+        cliffEl.setAttribute('d', buildCliffPath(interp, xMax));
+        if (p === 1) currentPoints = nextPoints;
+      });
+    }
+
+    function updateXTicks(xMax) {
+      const g = document.getElementById('xticks');
+      g.innerHTML = '';
+      const ticks = xMax >= 100000
+        ? [0, 20000, 40000, 60000, 80000, 100000, 120000]
+        : [0, 5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000];
+      ticks.forEach(t => {
+        if (t > xMax) return;
+        const x = xScale(t, xMax);
+        const lbl = document.createElementNS(SVG_NS, 'text');
+        lbl.setAttribute('x', x); lbl.setAttribute('y', M.t + PH + 16);
+        lbl.setAttribute('text-anchor', 'middle');
+        lbl.setAttribute('font-size', '10');
+        lbl.setAttribute('font-weight', '500');
+        lbl.setAttribute('fill', '#64748b');
+        lbl.textContent = '$' + (t/1000) + 'K';
+        g.appendChild(lbl);
+
+        const tick = document.createElementNS(SVG_NS, 'line');
+        tick.setAttribute('x1', x); tick.setAttribute('x2', x);
+        tick.setAttribute('y1', M.t + PH); tick.setAttribute('y2', M.t + PH + 4);
+        tick.setAttribute('stroke', '#cbd5e1');
+        g.appendChild(tick);
+      });
+    }
+
+    function placeMarker(xMax, points) {
+      const marker = document.getElementById('bracket-marker');
+      const bx = state.bracket;
+      if (bx > xMax) { marker.style.display = 'none'; return; }
+      marker.style.display = '';
+      let y = 1;
+      for (let i = 0; i < points.length - 1; i++) {
+        if (bx >= points[i].x && bx <= points[i+1].x) {
+          const t = (bx - points[i].x) / (points[i+1].x - points[i].x || 1);
+          y = points[i].y + t * (points[i+1].y - points[i].y);
+          break;
+        }
+      }
+      const cx = xScale(bx, xMax), cy = yScale(y);
+      marker.querySelector('line').setAttribute('x1', cx);
+      marker.querySelector('line').setAttribute('x2', cx);
+      const circs = marker.querySelectorAll('circle');
+      circs[0].setAttribute('cx', cx); circs[0].setAttribute('cy', cy);
+      circs[1].setAttribute('cx', cx); circs[1].setAttribute('cy', cy);
+    }
+
+    function placeCliffLabel(points, xMax) {
+      const label = document.getElementById('cliff-label');
+      if (!points.length) { label.style.display = 'none'; return; }
+      let minIdx = 0;
+      for (let i = 1; i < points.length; i++) if (points[i].y < points[minIdx].y) minIdx = i;
+      const deep = points[minIdx];
+      if (deep.y > 0.65) { label.style.display = 'none'; return; }
+      label.style.display = '';
+      let cx = xScale(deep.x, xMax);
+      // Lift label well clear of the curve line; clamp inside the plot area top
+      let cy = yScale(deep.y) - 34;
+      cy = Math.max(M.t + 14, cy);
+      cx = Math.max(M.l + 110, Math.min(M.l + PW - 110, cx));
+      label.querySelectorAll('text').forEach((t, i) => {
+        t.setAttribute('x', cx);
+        t.setAttribute('y', cy + (i === 0 ? 0 : 14));
+      });
+    }
+
+    // Small light tooltip pinned at the bracket marker
+    function placeAnnotation(points, xMax) {
+      const g = document.getElementById('annotation');
+      g.innerHTML = '';
+      const profile = PROFILES[state.profile];
+      const rate = keepRate(state.bracket, profile, state.province, 1000);
+      const keptCents = Math.round(Math.max(0, Math.min(1, rate)) * 100);
+
+      const bx = xScale(state.bracket, xMax);
+      const anchorRight = bx > M.l + PW * 0.6;
+      const w = 168, h = 42;
+      const bubbleX = anchorRight ? bx - w - 10 : bx + 10;
+      const bubbleY = M.t + 8;
+
+      g.innerHTML = `
+        <rect x="${bubbleX}" y="${bubbleY}" width="${w}" height="${h}" rx="8"
+              fill="#ffffff" stroke="#c7d2fe" stroke-width="1"/>
+        <text x="${bubbleX + 12}" y="${bubbleY + 17}" font-size="10" font-weight="600"
+              fill="#64748b" letter-spacing="0.06em">AT $${state.bracket.toLocaleString()}</text>
+        <text x="${bubbleX + 12}" y="${bubbleY + 33}" font-size="13" font-weight="700"
+              fill="#4f46e5">You keep ~${keptCents}¢ of next $1</text>
+      `;
+    }
+
+    // ============================================================
+    //  5. LIVE EXPLAINER CARD — friendly, tfsa-snowballer voice
+    // ============================================================
+    function renderExplainer(scenario) {
+      const { fed, prov, ccb, gis, kept } = scenario.losses;
+      const profile = PROFILES[state.profile];
+      const provName = PROVINCE_NAMES[state.province];
+      const gross = state.bracket;
+      const rate = keepRate(gross, profile, state.province, 1000);
+      const keptCents = Math.round(Math.max(0, Math.min(1, rate)) * 100);
+      const losePerK = 1000 - Math.round(Math.max(0, Math.min(1, rate)) * 1000);
+      const emtrPct = Math.round((1 - kept / 2500) * 100);
+      const taxOnly = Math.max(0, fed + prov);
+      const clawOnly = Math.max(0, ccb + gis);
+
+      const heading = profile.type === 'senior'
+        ? `At <strong>$${gross.toLocaleString()}</strong> in employment income as ${profile.label} (${provName}):`
+        : `At <strong>$${gross.toLocaleString()}</strong> with ${profile.label} in ${provName}:`;
+
+      // Build numbered points dynamically based on what actually matters at this bracket
+      const points = [];
+      points.push(
+        `<strong>1. Your next $1,000 returns about $${(1000 - losePerK).toLocaleString()} to your pocket.</strong>
+         That's roughly <strong>${keptCents}¢ kept per next dollar earned</strong> — and <strong>$${losePerK}</strong> per extra $1,000 disappearing somewhere.`
+      );
+      points.push(
+        `<strong>2. Income tax accounts for $${Math.round(taxOnly).toLocaleString()} of every $2,500 raise.</strong>
+         Federal tax ($${Math.round(Math.max(0,fed)).toLocaleString()}) plus ${provName} tax ($${Math.round(Math.max(0,prov)).toLocaleString()}) — the visible part of the bite.`
+      );
+      if (profile.type === 'family' && ccb > 1) {
+        points.push(
+          `<strong>3. The CCB phase-out invisibly removes another $${Math.round(ccb).toLocaleString()}.</strong>
+           You won't see this on your paystub. It arrives months later as a smaller monthly CCB deposit, recalculated each July from your prior-year tax return.`
+        );
+      } else if (profile.type === 'family') {
+        points.push(
+          `<strong>3. No CCB clawback yet.</strong>
+           Your income is still below the $38,237 phase-out threshold — every benefit dollar stays intact at this bracket.`
+        );
+      }
+      if (profile.type === 'senior' && gis > 1) {
+        points.push(
+          `<strong>3. The GIS clawback strips out $${Math.round(gis).toLocaleString()} more.</strong>
+           For every dollar of employment income above the $5,000 full exemption (plus $10,000 partial), Service Canada reduces your GIS by 50¢ — one of the harshest implicit rates in the entire tax system.`
+        );
+      } else if (profile.type === 'senior') {
+        points.push(
+          `<strong>3. You're still inside the GIS earnings exemption.</strong>
+           The first $5,000 of employment income is fully exempt, and the next $10,000 is half-exempt. GIS only starts shrinking past that zone.`
+        );
+      }
+      points.push(
+        `<strong>4. Real effective bite: <span style="color:#b45309;">${emtrPct}%</span> of your raise.</strong>
+         ${emtrPct >= 50
+           ? "That's higher than the top federal tax bracket — and it lands on a family that statistically can least afford the surprise."
+           : emtrPct >= 35
+           ? "Notably above the headline marginal tax rate quoted in most public guides — because the clawback layer is rarely added to the picture."
+           : "Most of the bite here is just regular income tax. The benefit clawback is still small at this income level."}`
+      );
+
+      document.getElementById('live-explainer').innerHTML =
+        `<p class="text-slate-700">${heading}</p>` +
+        points.map(p => `<p>${p}</p>`).join('');
+    }
+
+    // ============================================================
+    //  6. LEAKY PIPELINE
+    // ============================================================
+    function fmt$(n) {
+      const r = Math.round(n);
+      return (r < 0 ? '-' : '') + '$' + Math.abs(r).toLocaleString();
+    }
+    function renderPipeline(scenario) {
+      const { fed, prov, ccb, gis, kept } = scenario.losses;
+      const total = 2500;
+      const updates = [
+        { bar: 'bar-fed',  amt: 'amt-fed',  value: Math.max(0, fed) },
+        { bar: 'bar-prov', amt: 'amt-prov', value: Math.max(0, prov) },
+        { bar: 'bar-ccb',  amt: 'amt-ccb',  value: Math.max(0, ccb) },
+        { bar: 'bar-gis',  amt: 'amt-gis',  value: Math.max(0, gis) },
+        { bar: 'bar-keep', amt: 'amt-keep', value: Math.max(0, kept) }
+      ];
+      updates.forEach((u, i) => {
+        const bar = document.getElementById(u.bar);
+        const amt = document.getElementById(u.amt);
+        const pct = Math.min(100, (u.value / total) * 100);
+        setTimeout(() => {
+          bar.style.width = pct.toFixed(1) + '%';
+          const fromN = parseFloat(amt.dataset.val) || 0;
+          cancelableTween(amt, 500, (p) => {
+            const v = fromN + (u.value - fromN) * p;
+            amt.textContent = fmt$(v);
+            if (p === 1) amt.dataset.val = String(u.value);
+          });
+        }, i * 90);
+      });
+    }
+
+    // ============================================================
+    //  7. SUMMARY CARDS
+    // ============================================================
+    function renderSummary(scenario) {
+      const kept = Math.max(0, scenario.losses.kept);
+      const stat = document.getElementById('net-stat');
+      const caption = document.getElementById('net-caption');
+      const fromN = parseFloat(stat.dataset.val) || 0;
+      cancelableTween(stat, 600, (p) => {
+        const v = fromN + (kept - fromN) * p;
+        stat.textContent = fmt$(v);
+        if (p === 1) stat.dataset.val = String(kept);
+      });
+      const lossPct = Math.round((1 - kept / 2500) * 100);
+      const profile = PROFILES[state.profile];
+      caption.textContent = profile.type === 'senior'
+        ? 'After income tax and the 50% GIS clawback on earnings above the exemption.'
+        : 'After federal + provincial income tax and the CCB phase-out.';
+
+      const emtr = document.getElementById('emtr-stat');
+      const fromE = parseFloat(emtr.dataset.val) || 0;
+      cancelableTween(emtr, 600, (p) => {
+        const v = fromE + (lossPct - fromE) * p;
+        emtr.textContent = Math.round(v) + '%';
+        if (p === 1) emtr.dataset.val = String(lossPct);
+      });
+      document.getElementById('emtr-caption').textContent =
+        lossPct >= 50 ? 'Higher than Canada\'s top federal tax bracket.'
+      : lossPct >= 35 ? 'Notably above the headline marginal rate.'
+      :                 'Mostly just regular tax at this income level.';
+    }
+
+    // ============================================================
+    //  8. MASTER RENDER
+    // ============================================================
+    function render() {
+      const points = curveSamples(state.profile, state.province);
+      const xMax = points[points.length - 1].xMax;
+      updateXTicks(xMax);
+      animateCurveTo(points, xMax);
+      setTimeout(() => {
+        placeMarker(xMax, points);
+        placeCliffLabel(points, xMax);
+        placeAnnotation(points, xMax);
+      }, 60);
+
+      const scenario = computeScenario(state.profile, state.bracket, state.province);
+      renderPipeline(scenario);
+      renderSummary(scenario);
+      renderExplainer(scenario);
+    }
+
+    // ============================================================
+    //  9. WIRE UI
+    // ============================================================
+    document.getElementById('profile-grid').addEventListener('click', (e) => {
+      const card = e.target.closest('.profile-card');
+      if (!card) return;
+      document.querySelectorAll('.profile-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      state.profile = card.dataset.profile;
+      rebuildBracketPills();
+      render();
+    });
+
+    function rebuildBracketPills() {
+      const row = document.getElementById('bracket-row');
+      const provGroup = row.querySelector('.ml-auto');
+      row.querySelectorAll('.bracket-pill').forEach(p => p.remove());
+
+      const isSenior = PROFILES[state.profile].type === 'senior';
+      const set = isSenior
+        ? [
+            { val: 5000,  label: 'No Earnings · $5,000' },
+            { val: 15000, label: 'Part-Time · $15,000' },
+            { val: 25000, label: 'Active Work · $25,000' }
+          ]
+        : [
+            { val: 35000, label: 'Entry Level · $35,000' },
+            { val: 55000, label: 'Mid-Career · $55,000' },
+            { val: 75000, label: 'Stepping Up · $75,000' }
+          ];
+
+      if (!set.find(p => p.val === state.bracket)) state.bracket = set[1].val;
+
+      set.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'bracket-pill' + (p.val === state.bracket ? ' active' : '');
+        btn.dataset.bracket = p.val;
+        btn.textContent = p.label.replace(' · ', '  ·  ');
+        row.insertBefore(btn, provGroup);
+      });
+    }
+
+    document.getElementById('bracket-row').addEventListener('click', (e) => {
+      const pill = e.target.closest('.bracket-pill');
+      if (!pill) return;
+      document.querySelectorAll('.bracket-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      state.bracket = parseInt(pill.dataset.bracket, 10);
+      render();
+    });
+
+    document.getElementById('province-select').addEventListener('change', (e) => {
+      state.province = e.target.value;
+      render();
+    });
+
+    // ============================================================
+    // 10. INIT
+    // ============================================================
+    buildStaticChartChrome();
+    render();
+
+  })();
+  </script>
+</body>
+</html>
