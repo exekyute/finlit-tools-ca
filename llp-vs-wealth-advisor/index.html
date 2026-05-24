@@ -53,7 +53,7 @@
     }
 
     /* Header */
-    .header { text-align: center; }
+    .header { text-align: center; position: relative; }
     .header h1 {
       font-size: clamp(28px, 4vw, 40px);
       font-weight: 800;
@@ -67,6 +67,22 @@
       max-width: 640px;
       margin: 0 auto;
     }
+    .reset-btn {
+      position: absolute;
+      top: 0; right: 0;
+      background: transparent;
+      border: none;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-subtle);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      padding: 6px 10px;
+      transition: color 0.15s ease;
+    }
+    .reset-btn:hover { color: var(--indigo); }
 
     /* Intro cards */
     .intro-grid {
@@ -174,10 +190,11 @@
     /* Controls — option-card layout */
     .controls-grid {
       display: grid;
-      grid-template-columns: 3fr 2fr;
+      grid-template-columns: 1.2fr 1fr 1fr;
       gap: 16px;
     }
-    @media (max-width: 860px) { .controls-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 960px) { .controls-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) { .controls-grid { grid-template-columns: 1fr; } }
     .control-panel {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -241,19 +258,55 @@
       color: var(--text-subtle);
       font-weight: 500;
     }
+    .age-input {
+      font-family: inherit;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      padding: 12px 14px;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      background: white;
+      width: 100%;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      letter-spacing: -0.01em;
+    }
+    .age-input:focus {
+      outline: none;
+      border-color: var(--indigo);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.10);
+    }
+    .age-input::placeholder { color: var(--text-subtle); font-weight: 500; }
+
+    /* Story sentence */
+    .story-section {
+      padding: 4px 0;
+    }
+    .story-sentence {
+      font-size: clamp(17px, 2vw, 21px);
+      font-weight: 500;
+      color: var(--text);
+      max-width: 900px;
+      line-height: 1.5;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .story-sentence strong { font-weight: 700; }
 
     /* Gap badge */
-    .gap-badge {
+    .gap-section {
       background: linear-gradient(135deg, #fff7ed 0%, #fffbeb 100%);
       border: 1px solid var(--amber-200);
       border-radius: var(--radius);
       padding: 24px 28px;
+      box-shadow: var(--shadow-sm);
+    }
+    .gap-badge {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      box-shadow: var(--shadow-sm);
     }
     .gap-badge .label {
       font-size: 13px;
@@ -274,6 +327,47 @@
       color: var(--amber);
       letter-spacing: -0.02em;
       line-height: 1;
+    }
+
+    /* Real-world equivalents */
+    .equivalents-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+    @media (max-width: 760px) { .equivalents-row { grid-template-columns: 1fr; } }
+    .equivalent-chip {
+      background: white;
+      border: 1px solid var(--amber-200);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .equivalent-chip .eq-main {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--amber);
+      letter-spacing: -0.01em;
+      line-height: 1.1;
+    }
+    .equivalent-chip .eq-sub {
+      font-size: 12px;
+      color: #78350f;
+      margin-top: 4px;
+    }
+    .equivalent-chip .eq-note {
+      font-size: 10px;
+      color: #92400e;
+      opacity: 0.7;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+    .equivalents-footnote {
+      font-size: 11px;
+      color: #92400e;
+      opacity: 0.75;
+      margin-top: 10px;
+      font-style: italic;
     }
 
     /* Bars */
@@ -329,6 +423,105 @@
     .bar-fill.llp       { background: linear-gradient(90deg, #fbbf24 0%, #d97706 100%); }
     .bar-value { text-align: right; font-weight: 700; font-size: 15px; color: var(--text); }
     @media (max-width: 760px) { .bar-value { text-align: left; } }
+
+    /* Divergence chart */
+    .chart-container {
+      position: relative;
+      margin: 28px 0 0;
+      padding-top: 22px;
+      border-top: 1px solid var(--border);
+    }
+    .chart-container h4 {
+      font-size: 13px;
+      font-weight: 700;
+      margin: 0 0 4px;
+      color: var(--text-muted);
+    }
+    .chart-container .chart-sub {
+      font-size: 12px;
+      color: var(--text-subtle);
+      margin: 0 0 16px;
+    }
+    .chart-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      overflow: visible;
+    }
+    .chart-grid { stroke: #f1f5f9; stroke-width: 1; }
+    .chart-axis-label {
+      font-size: 11px;
+      fill: var(--text-subtle);
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+    }
+    .chart-marker-label {
+      font-size: 10px;
+      fill: var(--text-muted);
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+    }
+    .chart-phase-marker {
+      stroke: #cbd5e1;
+      stroke-width: 1;
+      stroke-dasharray: 4 4;
+    }
+    .chart-line {
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+    }
+    .chart-line.untouched { stroke: var(--emerald); }
+    .chart-line.llp { stroke: var(--amber); }
+    .chart-gap-fill {
+      fill: var(--amber);
+      opacity: 0.10;
+    }
+    .chart-guide {
+      stroke: var(--text-subtle);
+      stroke-width: 1;
+      stroke-dasharray: 3 3;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .chart-dot {
+      r: 4;
+      stroke: white;
+      stroke-width: 2;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .chart-dot.untouched { fill: var(--emerald); }
+    .chart-dot.llp { fill: var(--amber); }
+    .chart-overlay { cursor: crosshair; }
+    .chart-tooltip {
+      position: absolute;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      box-shadow: var(--shadow-md);
+      font-size: 12px;
+      pointer-events: none;
+      min-width: 200px;
+      z-index: 10;
+    }
+    .chart-tooltip .tt-year { font-weight: 700; font-size: 13px; margin-bottom: 6px; color: var(--text); }
+    .chart-tooltip .tt-row { display: flex; justify-content: space-between; gap: 12px; color: var(--text-muted); padding: 2px 0; }
+    .chart-tooltip .tt-row .tt-name { display: inline-flex; align-items: center; gap: 6px; }
+    .chart-tooltip .tt-swatch { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .chart-tooltip .tt-gap { font-weight: 700; color: var(--amber); border-top: 1px solid var(--border); padding-top: 6px; margin-top: 4px; }
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .chart-legend .chip { display: inline-flex; align-items: center; gap: 6px; }
+    .chart-legend .swatch { width: 12px; height: 3px; border-radius: 2px; }
 
     /* Year-by-year mini timeline */
     .timeline-strip {
@@ -435,9 +628,35 @@
       padding: 18px 24px;
       border-bottom: 1px solid var(--border);
       background: #f8fafc;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
     }
     .table-header h3 { margin: 0; font-size: 16px; font-weight: 700; }
     .table-header .sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .csv-btn {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      background: white;
+      border: 1px solid var(--border-strong);
+      color: var(--text-muted);
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    .csv-btn:hover {
+      background: var(--indigo-50);
+      color: var(--indigo);
+      border-color: var(--indigo);
+    }
+    .csv-btn svg { width: 14px; height: 14px; }
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th {
@@ -500,24 +719,56 @@
       line-height: 1.6;
     }
     .disclaimer .body p { margin: 0 0 10px; }
+
+    /* Print styles */
+    @media print {
+      body { background: white !important; padding: 16px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .no-print { display: none !important; }
+      .dashboard { gap: 18px; }
+      .info-card, .summary-card, .bars-card, .table-card, .gap-section, .equivalent-chip, .disclaimer, .control-panel {
+        box-shadow: none !important;
+        break-inside: avoid;
+      }
+      .header h1 { font-size: 22px; margin-bottom: 6px; }
+      .header p { font-size: 12px; }
+      .story-sentence { font-size: 15px !important; }
+      .gap-badge .amount { font-size: 28px; }
+      .summary-card .summary-value { font-size: 22px; }
+      .bars-card { padding: 18px; }
+      .bars-card h3 { font-size: 14px; }
+      .chart-container { page-break-inside: avoid; }
+      details.disclaimer summary { display: none; }
+      details.disclaimer .body { padding: 16px 24px !important; display: block !important; }
+      details.disclaimer::before {
+        content: 'Disclaimer & assumptions';
+        display: block;
+        font-weight: 700;
+        font-size: 12px;
+        padding: 14px 24px 0;
+        color: var(--text-muted);
+      }
+      table { font-size: 11px; }
+      th, td { padding: 6px 12px !important; }
+    }
   </style>
 </head>
 <body>
   <div class="dashboard">
 
     <header class="header">
+      <button class="reset-btn no-print" id="resetBtn" type="button">Reset to defaults</button>
       <h1>The Canadian LLP vs. Wealth Advisor</h1>
       <p>See the invisible cost of pulling money out of your RRSP to fund school — even if you pay every cent back on time, the lost years of compounding never come back.</p>
     </header>
 
-    <section class="intro-grid">
+    <section class="intro-grid no-print">
       <div class="info-card">
         <h2>
           <svg class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
           How to use this tool
         </h2>
         <p>Pick the education path that best matches your plan. The tool projects 25 years into the future and shows two side-by-side outcomes: the value your RRSP would have reached if you'd left it alone, vs. the value it actually reaches when you pull money out under the LLP and repay it perfectly over 10 years.</p>
-        <p>Use the toggles to test different growth assumptions and see whether the CRA's grace period before repayment makes the gap better or worse.</p>
+        <p>Use the controls to test different growth assumptions and see whether the CRA's grace period before repayment makes the gap better or worse. Optionally enter your age to translate "Year 25" into your actual age at withdrawal.</p>
       </div>
       <div class="info-card warn">
         <h2>
@@ -530,12 +781,12 @@
       </div>
     </section>
 
-    <section>
+    <section class="no-print">
       <h2 class="section-title">1. Pick your education scenario</h2>
       <div class="archetype-grid" id="archetypeGrid"></div>
     </section>
 
-    <section>
+    <section class="no-print">
       <h2 class="section-title">2. Adjust the assumptions</h2>
       <div class="controls-grid">
         <div class="control-panel">
@@ -552,16 +803,31 @@
           </div>
           <div class="option-row cols-2" id="graceOptions"></div>
         </div>
+        <div class="control-panel">
+          <div class="control-heading">
+            <span class="control-label">Your age today (optional)</span>
+            <span class="control-hint">Translates "Year 25" into your real age.</span>
+          </div>
+          <input type="number" id="ageInput" class="age-input" min="15" max="80" placeholder="e.g. 30" inputmode="numeric" autocomplete="off"/>
+        </div>
       </div>
     </section>
 
+    <section class="story-section">
+      <p class="story-sentence" id="storySentence"></p>
+    </section>
+
     <section>
-      <div class="gap-badge">
-        <div>
-          <div class="label">The Opportunity Cost Gap</div>
-          <div class="label-sub" id="gapSubtitle"></div>
+      <div class="gap-section">
+        <div class="gap-badge">
+          <div>
+            <div class="label">The Opportunity Cost Gap</div>
+            <div class="label-sub" id="gapSubtitle"></div>
+          </div>
+          <div class="amount" id="gapAmount">$0</div>
         </div>
-        <div class="amount" id="gapAmount">$0</div>
+        <div class="equivalents-row" id="equivalentChips"></div>
+        <div class="equivalents-footnote">Real-world anchors based on rough Canadian averages — see disclaimer below for sources.</div>
       </div>
     </section>
 
@@ -585,6 +851,18 @@
         <div class="bar-value" id="valLLP">$0</div>
       </div>
 
+      <div class="chart-container">
+        <h4>How the gap accumulates over 25 years</h4>
+        <p class="chart-sub">Hover or tap anywhere on the chart to inspect a specific year.</p>
+        <div id="chartInner"></div>
+        <div class="chart-tooltip" id="chartTooltip" style="display:none"></div>
+        <div class="chart-legend">
+          <span class="chip"><span class="swatch" style="background:var(--emerald)"></span>Untouched RRSP</span>
+          <span class="chip"><span class="swatch" style="background:var(--amber)"></span>LLP path</span>
+          <span class="chip"><span class="swatch" style="background:var(--amber); opacity: 0.3; height: 10px; border-radius: 2px;"></span>The gap</span>
+        </div>
+      </div>
+
       <div class="timeline-strip">
         <h4>What each year looks like for the LLP path</h4>
         <div class="phase-bar" id="phaseBar"></div>
@@ -604,7 +882,7 @@
         <div class="summary-note">Out-of-pocket via LLP withdrawal</div>
       </div>
       <div class="summary-card success">
-        <div class="summary-label">Untouched portfolio @ Y25</div>
+        <div class="summary-label" id="sumUntouchedLabel">Untouched portfolio @ Y25</div>
         <div class="summary-value" id="sumUntouched">$0</div>
         <div class="summary-note">If the money never left the RRSP</div>
       </div>
@@ -617,8 +895,14 @@
 
     <section class="table-card">
       <div class="table-header">
-        <h3>Year-by-year breakdown</h3>
-        <div class="sub">25-year projection. The "Lost" column shows the running gap between the two paths.</div>
+        <div>
+          <h3>Year-by-year breakdown</h3>
+          <div class="sub">25-year projection. The "Lost" column shows the running gap between the two paths.</div>
+        </div>
+        <button class="csv-btn no-print" id="csvBtn" type="button">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Export CSV
+        </button>
       </div>
       <div class="table-wrap">
         <table>
@@ -638,11 +922,12 @@
     </section>
 
     <details class="disclaimer">
-      <summary>Legal disclaimer & assumptions</summary>
+      <summary>Legal disclaimer, assumptions & data sources</summary>
       <div class="body">
         <p>The Lifelong Learning Plan (LLP) is administered by the Canada Revenue Agency under the <em>Income Tax Act</em>. Withdrawal limits, repayment schedules, and qualifying-program rules are subject to legislative change. The figures shown here are illustrative projections only — they assume a constant annual growth rate, perfectly-timed repayments, and the simplified grace-period model described below.</p>
-        <p><strong>Grace period model:</strong> When "CRA grace period" is on, repayments begin five years after the last withdrawal year. In practice the CRA rule is the <em>earlier</em> of (a) the fifth year after your first LLP withdrawal or (b) the second year after you cease to qualify as a full-time student — so your actual schedule may begin sooner. Toggle the grace period off to model immediate-repayment behaviour.</p>
+        <p><strong>Grace period model:</strong> When "Grace ON" is selected, repayments begin five years after the last withdrawal year. In practice the CRA rule is the <em>earlier</em> of (a) the fifth year after your first LLP withdrawal or (b) the second year after you cease to qualify as a full-time student — so your actual schedule may begin sooner. Select "Grace OFF" to model immediate-repayment behaviour.</p>
         <p><strong>Tax treatment:</strong> LLP repayments are designated on Schedule 7 of your T1 return and do not generate a new RRSP deduction.</p>
+        <p><strong>Real-world equivalents:</strong> The grocery, wedding, and rent anchors used in the equivalents row are rough Canadian averages drawn from Statistics Canada food expenditure data (~$1,100/month for an individual), industry surveys of average Canadian wedding costs (~$30,000), and rental market reports for one-bedroom apartments in mid-sized Canadian cities (~$18,000/year). These are anchors for intuition only.</p>
         <p>This tool is not tax, legal, or investment advice. Verify your LLP balance, available room, and repayment schedule in <strong>CRA My Account</strong>, and consult a qualified professional before acting.</p>
       </div>
     </details>
@@ -689,18 +974,41 @@
       { value: 0.08,  label: '8%',   note: 'Aggressive' }
     ];
 
+    const GRACE_OPTIONS = [
+      { value: true,  main: 'Grace ON',  sub: '5-year delay (CRA default)' },
+      { value: false, main: 'Grace OFF', sub: 'Repay immediately after school' }
+    ];
+
     const HORIZON = 25;
     const REPAYMENT_YEARS = 10;
     const GRACE_YEARS = 5;
 
-    // ───── State ─────
-    const state = {
+    // ───── State + persistence ─────
+    const STORAGE_KEY = 'llp_state_v1';
+    const DEFAULT_STATE = {
       archetypeId: 'postgrad',
       rate: 0.065,
-      graceOn: true
+      graceOn: true,
+      userAge: ''
     };
 
-    // ───── Math ─────
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { ...DEFAULT_STATE };
+        const parsed = JSON.parse(raw);
+        return { ...DEFAULT_STATE, ...parsed };
+      } catch (e) {
+        return { ...DEFAULT_STATE };
+      }
+    }
+    function saveState() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+    }
+
+    const state = loadState();
+
+    // ───── Math (DO NOT MODIFY) ─────
     function simulate(archetype, rate, graceOn) {
       const lastSchoolYear = Math.max(...archetype.withdrawals.map(w => w.year));
       const totalWithdrawn = archetype.withdrawals.reduce((s, w) => s + w.amount, 0);
@@ -713,12 +1021,10 @@
       const yearly = [];
 
       for (let y = 1; y <= HORIZON; y++) {
-        // Untouched path: any withdrawal slated for year y stays in the RRSP from start of y.
         const wThisYear = archetype.withdrawals.find(w => w.year === y);
         if (wThisYear) untouchedBalance += wThisYear.amount;
         untouchedBalance *= (1 + rate);
 
-        // LLP path: classify the year, contribute, then compound.
         let phase, contribution = 0;
         if (y <= lastSchoolYear) {
           phase = 'school';
@@ -755,10 +1061,36 @@
       };
     }
 
-    // ───── Formatting ─────
+    // ───── Formatting helpers ─────
     const fmt = new Intl.NumberFormat('en-CA', {
       style: 'currency', currency: 'CAD', maximumFractionDigits: 0
     });
+    function fmtShort(v) {
+      if (v >= 1000000) return `$${(v / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+      if (v >= 1000) return `$${Math.round(v / 1000)}k`;
+      return `$${Math.round(v)}`;
+    }
+    function niceCeil(n) {
+      if (n <= 0) return 1;
+      const mag = Math.pow(10, Math.floor(Math.log10(n)));
+      const norm = n / mag;
+      let nice;
+      if (norm <= 1) nice = 1;
+      else if (norm <= 2) nice = 2;
+      else if (norm <= 5) nice = 5;
+      else nice = 10;
+      return nice * mag;
+    }
+    function ageOfUser() {
+      const n = parseInt(state.userAge, 10);
+      return (Number.isFinite(n) && n >= 15 && n <= 80) ? n : null;
+    }
+    function endpointLabel(year, compact) {
+      const age = ageOfUser();
+      if (!age) return `Year ${year}`;
+      const ageAt = age + year;
+      return compact ? `age ${ageAt}` : `Year ${year} (age ${ageAt})`;
+    }
     const $ = (id) => document.getElementById(id);
 
     // ───── Renderers ─────
@@ -799,11 +1131,6 @@
         wrap.appendChild(b);
       });
     }
-
-    const GRACE_OPTIONS = [
-      { value: true,  main: 'Grace ON',  sub: '5-year delay (CRA default)' },
-      { value: false, main: 'Grace OFF', sub: 'Repay immediately after school' }
-    ];
 
     function renderGraceOptions() {
       const wrap = $('graceOptions');
@@ -859,34 +1186,271 @@
       });
     }
 
+    // ───── Storytelling ─────
+    function renderStory(result) {
+      const tuitionStr = fmt.format(result.totalWithdrawn);
+      const gapStr = fmt.format(result.gap);
+      const endpoint = endpointLabel(HORIZON, true);
+      $('storySentence').innerHTML =
+        `You paid for <strong>${tuitionStr}</strong> of school, repaid every cent on schedule, and still ended up with <strong style="color:var(--amber)">${gapStr} less</strong> at <strong>${endpoint}</strong> than if you'd never touched your RRSP.`;
+    }
+
+    const EQUIVALENTS = [
+      {
+        calc: (gap) => `~${Math.round(gap / 1100).toLocaleString('en-CA')} months`,
+        label: 'of average Canadian groceries',
+        note: '≈ $1,100/month per person'
+      },
+      {
+        calc: (gap) => `${(gap / 30000).toFixed(1)}×`,
+        label: 'the average Canadian wedding',
+        note: '≈ $30,000 per wedding'
+      },
+      {
+        calc: (gap) => `${(gap / 18000).toFixed(1)} years`,
+        label: 'of mid-city 1-bedroom rent',
+        note: '≈ $18,000/year'
+      }
+    ];
+
+    function renderEquivalents(result) {
+      const wrap = $('equivalentChips');
+      wrap.innerHTML = EQUIVALENTS.map(e => `
+        <div class="equivalent-chip">
+          <div class="eq-main">${e.calc(result.gap)}</div>
+          <div class="eq-sub">${e.label}</div>
+          <div class="eq-note">${e.note}</div>
+        </div>
+      `).join('');
+    }
+
+    // ───── Divergence chart (SVG) ─────
+    const CHART_W = 820;
+    const CHART_H = 300;
+    const CHART_M = { top: 36, right: 16, bottom: 44, left: 64 };
+    const PLOT_W = CHART_W - CHART_M.left - CHART_M.right;
+    const PLOT_H = CHART_H - CHART_M.top - CHART_M.bottom;
+
+    let chartXScale, chartYScale, chartResult;
+
+    function renderChart(result) {
+      chartResult = result;
+      const maxV = Math.max(result.finalUntouched, result.finalLLP, 1);
+      const niceMax = niceCeil(maxV);
+      const xScale = (y) => CHART_M.left + ((y - 1) / (HORIZON - 1)) * PLOT_W;
+      const yScale = (v) => CHART_M.top + PLOT_H - (v / niceMax) * PLOT_H;
+      chartXScale = xScale;
+      chartYScale = yScale;
+
+      const untouchedPath = result.yearly
+        .map((d, i) => `${i === 0 ? 'M' : 'L'} ${xScale(d.year).toFixed(2)} ${yScale(d.untouchedBalance).toFixed(2)}`)
+        .join(' ');
+      const llpPath = result.yearly
+        .map((d, i) => `${i === 0 ? 'M' : 'L'} ${xScale(d.year).toFixed(2)} ${yScale(d.llpBalance).toFixed(2)}`)
+        .join(' ');
+
+      const gapForward = result.yearly
+        .map((d, i) => `${i === 0 ? 'M' : 'L'} ${xScale(d.year).toFixed(2)} ${yScale(d.untouchedBalance).toFixed(2)}`)
+        .join(' ');
+      const gapBack = result.yearly.slice().reverse()
+        .map(d => `L ${xScale(d.year).toFixed(2)} ${yScale(d.llpBalance).toFixed(2)}`)
+        .join(' ');
+      const gapPath = `${gapForward} ${gapBack} Z`;
+
+      const tickCount = 4;
+      const yTicks = [];
+      for (let i = 0; i <= tickCount; i++) yTicks.push((niceMax * i) / tickCount);
+
+      const xTickYears = [1, 5, 10, 15, 20, 25];
+
+      const markers = [
+        { year: result.lastSchoolYear, label: `School ends Y${result.lastSchoolYear}` },
+        { year: result.repaymentStart, label: `Repayment Y${result.repaymentStart}` },
+        { year: result.repaymentEnd, label: `Repaid Y${result.repaymentEnd}` }
+      ].filter(m => m.year >= 1 && m.year <= HORIZON);
+
+      let svg = `<svg viewBox="0 0 ${CHART_W} ${CHART_H}" class="chart-svg" preserveAspectRatio="xMidYMid meet">`;
+
+      yTicks.forEach(v => {
+        const y = yScale(v);
+        svg += `<line class="chart-grid" x1="${CHART_M.left}" y1="${y}" x2="${CHART_W - CHART_M.right}" y2="${y}"/>`;
+        svg += `<text class="chart-axis-label" x="${CHART_M.left - 10}" y="${y + 4}" text-anchor="end">${fmtShort(v)}</text>`;
+      });
+
+      markers.forEach((m, i) => {
+        const x = xScale(m.year);
+        svg += `<line class="chart-phase-marker" x1="${x}" y1="${CHART_M.top}" x2="${x}" y2="${CHART_M.top + PLOT_H}"/>`;
+        const labelY = CHART_M.top - 8 - (i % 2) * 12;
+        svg += `<text class="chart-marker-label" x="${x}" y="${labelY}" text-anchor="middle">${m.label}</text>`;
+      });
+
+      svg += `<path class="chart-gap-fill" d="${gapPath}"/>`;
+      svg += `<path class="chart-line untouched" d="${untouchedPath}"/>`;
+      svg += `<path class="chart-line llp" d="${llpPath}"/>`;
+
+      xTickYears.forEach(y => {
+        const x = xScale(y);
+        svg += `<text class="chart-axis-label" x="${x}" y="${CHART_H - CHART_M.bottom + 20}" text-anchor="middle">Y${y}</text>`;
+      });
+      if (ageOfUser()) {
+        xTickYears.forEach(y => {
+          const x = xScale(y);
+          svg += `<text class="chart-axis-label" x="${x}" y="${CHART_H - CHART_M.bottom + 34}" text-anchor="middle" style="font-size:10px; opacity:0.8;">age ${ageOfUser() + y}</text>`;
+        });
+      }
+
+      svg += `<line class="chart-guide" id="chartGuide" x1="-100" y1="${CHART_M.top}" x2="-100" y2="${CHART_M.top + PLOT_H}"/>`;
+      svg += `<circle class="chart-dot untouched" id="chartDotU" cx="-100" cy="-100"/>`;
+      svg += `<circle class="chart-dot llp" id="chartDotL" cx="-100" cy="-100"/>`;
+      svg += `<rect class="chart-overlay" id="chartOverlay" x="${CHART_M.left}" y="${CHART_M.top}" width="${PLOT_W}" height="${PLOT_H}" fill="transparent"/>`;
+      svg += `</svg>`;
+      $('chartInner').innerHTML = svg;
+
+      wireChartTooltip();
+    }
+
+    function wireChartTooltip() {
+      const svg = $('chartInner').querySelector('svg');
+      const overlay = $('chartInner').querySelector('#chartOverlay');
+      const tooltip = $('chartTooltip');
+      const guide = $('chartInner').querySelector('#chartGuide');
+      const dotU = $('chartInner').querySelector('#chartDotU');
+      const dotL = $('chartInner').querySelector('#chartDotL');
+      if (!overlay) return;
+
+      function update(clientX, clientY) {
+        const rect = svg.getBoundingClientRect();
+        const svgX = ((clientX - rect.left) / rect.width) * CHART_W;
+        const yearFloat = 1 + ((svgX - CHART_M.left) / PLOT_W) * (HORIZON - 1);
+        const year = Math.max(1, Math.min(HORIZON, Math.round(yearFloat)));
+        const row = chartResult.yearly[year - 1];
+        const gx = chartXScale(year);
+
+        guide.setAttribute('x1', gx);
+        guide.setAttribute('x2', gx);
+        guide.style.opacity = 0.7;
+        dotU.setAttribute('cx', gx);
+        dotU.setAttribute('cy', chartYScale(row.untouchedBalance));
+        dotU.style.opacity = 1;
+        dotL.setAttribute('cx', gx);
+        dotL.setAttribute('cy', chartYScale(row.llpBalance));
+        dotL.style.opacity = 1;
+
+        tooltip.style.display = 'block';
+        tooltip.innerHTML = `
+          <div class="tt-year">${endpointLabel(year, false)}</div>
+          <div class="tt-row"><span class="tt-name"><span class="tt-swatch" style="background:var(--emerald)"></span>Untouched</span><span>${fmt.format(row.untouchedBalance)}</span></div>
+          <div class="tt-row"><span class="tt-name"><span class="tt-swatch" style="background:var(--amber)"></span>LLP path</span><span>${fmt.format(row.llpBalance)}</span></div>
+          <div class="tt-row tt-gap"><span>Gap</span><span>${fmt.format(row.diff)}</span></div>
+        `;
+
+        const container = $('chartInner').parentElement;
+        const cRect = container.getBoundingClientRect();
+        const ttW = tooltip.offsetWidth || 220;
+        let left = clientX - cRect.left + 14;
+        if (left + ttW > cRect.width - 8) left = clientX - cRect.left - ttW - 14;
+        let top = clientY - cRect.top - 10;
+        if (top < 4) top = 4;
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = top + 'px';
+      }
+
+      function clear() {
+        tooltip.style.display = 'none';
+        guide.style.opacity = 0;
+        dotU.style.opacity = 0;
+        dotL.style.opacity = 0;
+      }
+
+      overlay.addEventListener('mousemove', (e) => update(e.clientX, e.clientY));
+      overlay.addEventListener('mouseleave', clear);
+      overlay.addEventListener('touchstart', (e) => {
+        if (e.touches[0]) { update(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); }
+      }, { passive: false });
+      overlay.addEventListener('touchmove', (e) => {
+        if (e.touches[0]) { update(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); }
+      }, { passive: false });
+      overlay.addEventListener('touchend', clear);
+    }
+
+    // ───── CSV export ─────
+    function handleDownloadCSV(result) {
+      const phaseLabel = { school: 'School', grace: 'Grace', repayment: 'Repayment', growth: 'Growth' };
+      const headers = ['Year', 'Phase', 'Untouched RRSP', 'LLP Balance', 'Annual Repayment', 'Lost to LLP'];
+      const rows = result.yearly.map(r => [
+        r.year,
+        phaseLabel[r.phase],
+        r.untouchedBalance.toFixed(2),
+        r.llpBalance.toFixed(2),
+        r.contribution.toFixed(2),
+        r.diff.toFixed(2)
+      ]);
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const uri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+      const link = document.createElement('a');
+      link.href = uri;
+      link.download = 'LLP_Opportunity_Cost.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // ───── Reset ─────
+    function handleReset() {
+      Object.assign(state, DEFAULT_STATE);
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      $('ageInput').value = '';
+      render();
+    }
+
+    // ───── Orchestrator ─────
+    let lastResult = null;
+
     function render() {
-      const archetype = ARCHETYPES.find(a => a.id === state.archetypeId);
+      const archetype = ARCHETYPES.find(a => a.id === state.archetypeId) || ARCHETYPES[1];
       const result = simulate(archetype, state.rate, state.graceOn);
+      lastResult = result;
 
       renderArchetypes();
       renderRates();
       renderGraceOptions();
 
-      // Bars (scale to the larger of the two values)
       const maxVal = Math.max(result.finalUntouched, result.finalLLP, 1);
       $('barUntouched').style.width = `${(result.finalUntouched / maxVal) * 100}%`;
       $('barLLP').style.width = `${(result.finalLLP / maxVal) * 100}%`;
       $('valUntouched').textContent = fmt.format(result.finalUntouched);
       $('valLLP').textContent = fmt.format(result.finalLLP);
 
-      // Gap badge
       $('gapAmount').textContent = fmt.format(result.gap);
+      const endpointFull = endpointLabel(HORIZON, false);
       $('gapSubtitle').textContent =
-        `The dollars your RRSP would hold at Year 25 if you'd never touched ${fmt.format(result.totalWithdrawn)} for school — minus what it actually holds after a perfect 10-year repayment.`;
+        `The dollars your RRSP would hold at ${endpointFull} if you'd never touched ${fmt.format(result.totalWithdrawn)} for school — minus what it actually holds after a perfect 10-year repayment.`;
 
-      // Summary cards
       $('sumTuition').textContent = fmt.format(result.totalWithdrawn);
       $('sumUntouched').textContent = fmt.format(result.finalUntouched);
+      $('sumUntouchedLabel').textContent = ageOfUser()
+        ? `Untouched portfolio @ age ${ageOfUser() + HORIZON}`
+        : 'Untouched portfolio @ Y25';
       $('sumTrueCost').textContent = fmt.format(result.totalWithdrawn + result.gap);
 
       renderPhaseBar(result);
       renderTable(result);
+      renderStory(result);
+      renderEquivalents(result);
+      renderChart(result);
+
+      saveState();
     }
+
+    // ───── Event wiring ─────
+    $('resetBtn').addEventListener('click', handleReset);
+    $('csvBtn').addEventListener('click', () => { if (lastResult) handleDownloadCSV(lastResult); });
+    const ageInput = $('ageInput');
+    ageInput.value = state.userAge || '';
+    ageInput.addEventListener('input', (e) => {
+      state.userAge = e.target.value.trim();
+      render();
+    });
 
     // ───── Init ─────
     render();
