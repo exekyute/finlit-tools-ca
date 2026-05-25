@@ -236,6 +236,7 @@
 
     <!-- ============================ HERO ============================ -->
     <header class="text-center space-y-3 relative">
+      <a href="../index.html" class="reset-link no-print" style="left: 0; right: auto;">← Home</a>
       <h1 class="text-4xl font-extrabold tracking-tight text-slate-900">The Canadian Benefit Clawback Radar</h1>
       <p class="text-lg text-slate-600 max-w-2xl mx-auto">
         Earning your next dollar isn't always worth a dollar. See exactly where Canada's income tax + non-taxable benefit clawbacks combine into a steep, hidden tax on low and middle incomes.
@@ -487,13 +488,17 @@
 
     <!-- ============================ FOOTER + LEGAL DISCLAIMER ============================ -->
     <footer class="pt-6 mt-8 border-t border-slate-200">
-      <details>
-        <summary class="expander-summary">LEGAL DISCLAIMER &nbsp;·&nbsp; Click to expand</summary>
-        <p class="text-[13px] text-slate-600 leading-relaxed pt-2 pb-2">
-          <strong class="text-slate-800">Legal Disclaimer:</strong> This application is intended solely for financial literacy illustration and educational purposes. It does not constitute formal accounting, tax filing, or legal financial planning advice. True calculation metrics rely on complex variables, including provincial low-income tax reductions, nested credits, shared custody arrangements, and marital status changes. Always cross-verify data models with official CRA schedules, Service Canada tables, or a Certified Professional Accountant (CPA) before making significant employment or income shifts.
-        </p>
+      <details class="bg-slate-50 border border-slate-200 rounded-xl" open>
+        <summary class="cursor-pointer px-5 py-4 text-sm font-bold text-slate-800 hover:text-indigo-700 select-none">
+          Disclaimer &amp; sources
+        </summary>
+        <div class="px-5 pb-5 pt-1 text-sm text-slate-600 space-y-3">
+          <p>This tool is illustrative only. It uses 2026-indexed estimates of CCB, GIS, and federal/provincial brackets for six provinces (ON, BC, AB, QC, NS, MB) and does <strong>not</strong> model provincial low-income credits (e.g. Ontario LIFT), health premiums or surtaxes (e.g. Ontario Health Premium), Quebec-specific deductions (QPP, QPIP, abatement), shared-custody splits, the GST/HST credit, provincial child benefits, the disability tax credit, or the childcare expense deduction.</p>
+          <p>RRSP contribution room is uncapped in the input — your real room depends on prior-year income. Verify your numbers in <a href="https://www.canada.ca/en/revenue-agency/services/e-services/cra-my-account.html" target="_blank" rel="noopener" class="underline text-indigo-600">CRA My Account</a> and Service Canada, and consult a Certified Professional Accountant before making employment or income decisions.</p>
+          <p class="text-xs text-slate-500">Not tax, legal, or investment advice.</p>
+        </div>
       </details>
-      <div class="text-[11px] text-slate-400 mt-4 tracking-wider uppercase">© Finlit Tools · Clawback Radar v3 · 2026 Parameter Frame</div>
+      <div class="text-[11px] text-slate-400 mt-4 tracking-wider uppercase">© Finlit Tools · 2026 Parameter Frame</div>
     </footer>
 
   </div>
@@ -505,10 +510,10 @@
   (function () {
     'use strict';
 
-    // ============================================================
-    //  1. BENEFIT MATH — pure, unchanged from v1 (the contract)
-    // ============================================================
+    // OPS CONTEXT: Visualises the hidden zone where earning your next dollar costs more than it adds — combined income tax plus CCB/GIS clawbacks — then offers an RRSP lever to flatten the cliff.
 
+    // M1 [Constants & Rules]: CRA benefit ceilings, phase-out tiers, federal + provincial bracket tables.
+    // PIVOT: CCB/GIS phase-out tables and rates sourced from the CRA July 2026 schedule. Federal/provincial brackets are 2026-indexed estimates. Refreshing any of these resets every output downstream.
     const CCB = {
       maxUnder6: 8157, max6to17: 6883,
       tier1Threshold: 38237, tier2Threshold: 82847,
@@ -565,6 +570,7 @@
       QC: 'Quebec', NS: 'Nova Scotia', MB: 'Manitoba'
     };
 
+    // M2 [Math Primitives]: bracketed tax + CCB/GIS benefit calculation. Pure functions.
     function bracketTax(income, brackets) {
       let tax = 0, prev = 0;
       for (const b of brackets) {
@@ -608,22 +614,13 @@
       return Math.max(0, GIS.maxAnnual - counted * GIS.clawbackRate);
     }
 
-    // ============================================================
-    //  1b. COMPOSITION LAYER — RRSP-aware wrappers.
-    //  These do NOT modify the math primitives; they just feed
-    //  adjusted inputs (gross - rrsp) into the existing functions.
-    // ============================================================
-
-    // For families: AFNI = gross - rrsp. For seniors: GIS uses employment income directly,
-    //   but RRSP still reduces taxable income for tax calculations.
+    // M3 [RRSP Adjustment Layer]: feeds (gross − rrsp) into M2 functions without modifying them.
+    // PIVOT: AFNI = gross − RRSP for families; same deduction applied to GIS clawback income at the federal level per Service Canada rules.
     function afniFor(gross, rrsp) { return Math.max(0, gross - rrsp); }
     function taxableFor(gross, rrsp) { return Math.max(0, gross - rrsp); }
 
     function benefitsAt(gross, rrsp, profile) {
       const afni = afniFor(gross, rrsp);
-      // GIS clawback applies to employment income, NOT to AFNI in the same way as CCB.
-      // RRSP contributions reduce GIS-clawback income at the federal level (RRSP is deducted
-      // from "income" used for GIS calc per Service Canada rules), so we apply the deduction here too.
       const empForGis = afni;
       return ccbBenefit(afni, profile) + gisBenefit(empForGis, profile);
     }
@@ -693,19 +690,15 @@
       return out;
     }
 
-    // Expose pure math + v2 wrappers for devtools spot-checks
+    // M4 [DevTools Hook]: exposes pure math + RRSP wrappers on window for spot-checks.
     window.BenefitMath = {
-      // unchanged primitives
       ccbBenefit, gisBenefit, federalTax, provincialTax,
-      // v2 composition layer
       afniFor, taxableFor, disposableAt, keepRateAt, computeScenarioV2,
       rrspImmediateValue, curveSamplesAt,
       CONST: { CCB, GIS, FED_BPA_2026, FED_BRACKETS_2026, PROV }
     };
 
-    // ============================================================
-    //  2. STATE
-    // ============================================================
+    // M5 [State]: presets, default state, hover-scrub tracking.
     const PRESETS = {
       'single-parent-1-young':  { isSenior: false, kidsUnder6: 1, kids6to17: 0 },
       'working-family-2-mixed': { isSenior: false, kidsUnder6: 1, kids6to17: 1 },
@@ -725,7 +718,7 @@
     let hoverIncome = null;
     function getActiveIncome() { return hoverIncome !== null ? hoverIncome : state.bracket; }
 
-    // ---- localStorage persistence (matches tfsa-snowballer / resp-calc family pattern) ----
+    // M6 [State Persistence]: localStorage save/load (key STORAGE_KEY).
     const STORAGE_KEY = 'clawback_radar_state_v3';
     function persistState() {
       try {
@@ -761,9 +754,7 @@
       };
     }
 
-    // ============================================================
-    //  3. ANIMATION HELPER
-    // ============================================================
+    // M7 [Animation Helper]: easing + cancelable tween for chart transitions.
     function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3)/2; }
     const tweenCancellers = new WeakMap();
     function cancelableTween(element, ms, onFrame) {
@@ -779,9 +770,7 @@
       requestAnimationFrame(frame);
     }
 
-    // ============================================================
-    //  4. ROLLERCOASTER (SVG)
-    // ============================================================
+    // M8 [Rollercoaster Chart] (SVG): keep-rate curve with cliff fill, no-RRSP ghost overlay, and current solid line.
     const VB_W = 800, VB_H = 380;
     const M = { l: 56, r: 24, t: 28, b: 46 };
     const PW = VB_W - M.l - M.r;
@@ -853,7 +842,7 @@
       xTitle.textContent = 'GROSS ANNUAL INCOME';
       svg.appendChild(xTitle);
 
-      // Dynamic layers — cliff under, area under, ghost curve (no-RRSP), then solid (current)
+      // Layers: cliff fill, no-RRSP ghost, current solid
       const cliffFill = document.createElementNS(SVG_NS, 'path');
       cliffFill.setAttribute('id', 'cliff-fill');
       cliffFill.setAttribute('fill', 'url(#gradCliff)');
@@ -1107,10 +1096,7 @@
       `;
     }
 
-    // ============================================================
-    //  5. LIVE EXPLAINER (recomputes scenario from getActiveIncome
-    //      so it updates live while scrubbing the curve)
-    // ============================================================
+    // M9 [Live Explainer]: recomputes scenario from getActiveIncome so it updates live while scrubbing the curve.
     function renderExplainer() {
       const profile = getEffectiveProfile();
       const provName = PROVINCE_NAMES[state.province];
@@ -1186,9 +1172,7 @@
         points.map(p => `<p>${p}</p>`).join('');
     }
 
-    // ============================================================
-    //  6. RRSP CARD READOUT
-    // ============================================================
+    // M10 [RRSP Readout]: dashboard card showing tax savings + benefit restored.
     function renderRrspReadout() {
       const el = document.getElementById('rrsp-readout');
       if (state.rrsp <= 0) { el.style.display = 'none'; return; }
@@ -1218,9 +1202,7 @@
       `;
     }
 
-    // ============================================================
-    //  7. LEAKY PIPELINE
-    // ============================================================
+    // M11 [Leaky Pipeline]: $2,500 raise stripped by fed tax, prov tax, CCB, GIS.
     function fmt$(n) {
       const r = Math.round(n);
       return (r < 0 ? '-' : '') + '$' + Math.abs(r).toLocaleString();
@@ -1251,9 +1233,7 @@
       });
     }
 
-    // ============================================================
-    //  8. SUMMARY CARDS
-    // ============================================================
+    // M12 [Summary Cards]: gross raise / true net take-home / effective marginal rate.
     function renderSummary(scenario) {
       const kept = Math.max(0, scenario.losses.kept);
       const stat = document.getElementById('net-stat');
@@ -1283,9 +1263,7 @@
       :                 'Mostly just regular tax at this income level.';
     }
 
-    // ============================================================
-    //  9. MASTER RENDER
-    // ============================================================
+    // M13 [Master Render]: full re-render on state change; hoverRender() only updates marker/tooltip/explainer.
     // Stored after each full render so hoverRender() can reuse the geometry
     let currentChartPoints = [];
     let currentChartXMax = 120000;
@@ -1332,9 +1310,7 @@
       renderExplainer();
     }
 
-    // ============================================================
-    // 10. UI WIRING
-    // ============================================================
+    // M14 [Event Wiring]: profile pills, kid steppers, income input, province select, RRSP slider.
 
     function syncProfileActive() {
       // Highlight profile card iff state matches a preset exactly
@@ -1469,9 +1445,7 @@
       });
     });
 
-    // ============================================================
-    // 10b. CHART HOVER / SCRUB / TAP-TO-COMMIT
-    // ============================================================
+    // M15 [Chart Hover/Scrub]: pointer + touch handlers convert position → income → live update.
     // Convert a pointer event (mouse or touch) into a snapped income value
     function eventToIncome(clientX) {
       const rect = svg.getBoundingClientRect();
@@ -1537,9 +1511,7 @@
       render();
     }, { passive: false });
 
-    // ============================================================
-    // 10c. RESET BUTTON
-    // ============================================================
+    // M16 [Reset Button]: wipes state back to defaults and re-renders.
     document.getElementById('reset-btn').addEventListener('click', () => {
       Object.assign(state, DEFAULT_STATE);
       hoverIncome = null;
@@ -1554,9 +1526,7 @@
       render();
     });
 
-    // ============================================================
-    // 11. INIT
-    // ============================================================
+    // M17 [Init]: hydrate from localStorage, then first render.
     loadState();    // restore from localStorage if available
     // After loading, the senior pill set might be needed
     document.getElementById('income-input').value = state.bracket;
