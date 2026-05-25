@@ -1,4 +1,4 @@
-# Finlit Tools — Canada
+# Canadian FinLit Tools
 
 > Seven self-contained, browser-based calculators for Canadian benefit and tax rules.
 
