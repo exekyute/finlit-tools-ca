@@ -13,29 +13,25 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; }
-    
-    /* FEATURE UPDATE: Custom CSS to make the sliders pop */
-    /* Resets the default boring browser styles */
+
     input[type=range] {
       -webkit-appearance: none;
       appearance: none;
-      background: transparent; 
+      background: transparent;
     }
-    
-    /* Styles the draggable "thumb" for Chrome/Safari/Edge */
+
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: #4f46e5; /* Indigo-600 */
+      background: #4f46e5;
       cursor: pointer;
       border: 3px solid white;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.4); /* Makes it pop */
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
     }
-    
-    /* Styles the draggable "thumb" for Firefox */
+
     input[type=range]::-moz-range-thumb {
       width: 20px;
       height: 20px;
@@ -45,8 +41,7 @@
       border: 3px solid white;
       box-shadow: 0 1px 4px rgba(0,0,0,0.4);
     }
-    
-    /* Print Layout Mode */
+
     @media print {
       body { background-color: white !important; }
       .no-print { display: none !important; }
@@ -58,15 +53,17 @@
   <div id="root"></div>
 
   <script type="text/babel" data-presets="react,typescript">
+    // OPS CONTEXT: Projects a Canadian First Home Savings Account year by year — contributions, tax refunds, growth — toward a down-payment target.
     const { useState, useMemo, useEffect } = React;
 
-    // =====================================================================
-    // PART 1: THE MATH BRAIN
-    // =====================================================================
+    // M1 [Constants & Rules]: CRA FHSA limits.
+    // PIVOT: Federal FHSA caps. $40K lifetime, $8K base annual, $8K max carry-forward — changing any value invalidates the room math downstream.
     const LIFETIME_CAP = 40000;
     const ANNUAL_BASE_CAP = 8000;
     const MAX_CARRY_FORWARD = 8000;
 
+    // M2 [Tax Bracket Estimator]: simplified combined federal+provincial marginal rate by income band.
+    // PIVOT: Approximate 2026 combined rates. Real brackets vary by province; refresh against CRA Schedule 1 if precision matters.
     function getMarginalTaxRate(income) {
       if (income <= 55000) return 0.20;
       if (income <= 110000) return 0.305;
@@ -75,6 +72,7 @@
       return 0.48;
     }
 
+    // M3 [Schedule Builder]: year-by-year contributions, carry-forward, refunds, growth, ending balance.
     function calculateFHSASchedule(inputs) {
       const taxRate = getMarginalTaxRate(inputs.income);
       let lifetimeRoom = LIFETIME_CAP;
@@ -144,12 +142,11 @@
       };
     }
 
-    // =====================================================================
-    // PART 2: THE VISUAL APP 
-    // =====================================================================
+    // M4 [UI Component]: state, derived projection, formatters, render.
     function FHSACalculator() {
       const defaultInputs = { income: 85000, annualContribution: 8000, returnRate: 0.05, years: 5, reinvestRefund: true };
 
+      // M5 [State Persistence]: load saved inputs from localStorage; defaults if absent or corrupt.
       const [inputs, setInputs] = useState(() => {
         const savedData = localStorage.getItem('fhsa_user_inputs_final');
         if (savedData) {
@@ -197,8 +194,6 @@
         document.body.removeChild(link);
       };
 
-      // FEATURE UPDATE: Helper function for the custom slider track fill.
-      // It figures out what % of the slider is "filled" based on current position.
       const getSliderFillPct = (value, min, max) => {
         return ((value - min) / (max - min)) * 100;
       };
@@ -214,12 +209,18 @@
         <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-10 text-slate-800">
           
           <div className="text-center space-y-3 relative">
+            <a
+              href="../index.html"
+              className="no-print absolute top-0 left-0 mt-2 ml-2 text-sm text-slate-500 hover:text-indigo-600 transition-colors font-medium underline underline-offset-4"
+            >
+              ← Home
+            </a>
             <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">FHSA Optimization Engine</h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               Plan your First Home Savings Account. Maximize your tax refunds and map out your path to homeownership.
             </p>
-            
-            <button 
+
+            <button
               onClick={handleReset}
               className="no-print absolute top-0 right-0 mt-2 mr-2 text-sm text-slate-500 hover:text-indigo-600 transition-colors font-medium underline underline-offset-4"
               aria-label="Reset all sliders to default values"
@@ -228,22 +229,18 @@
             </button>
           </div>
 
-          {/* FEATURE UPDATE: Removed the column wrappers inside here. 
-              It is now a pure 2x2 grid. Items auto-align horizontally by row. */}
           <div className="no-print bg-white p-6 sm:p-8 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
-            
-            {/* ROW 1: Income (Left) & Return Rate (Right) */}
+
             <div className="flex flex-col justify-start">
               <label htmlFor="income-slider" className="flex justify-between font-semibold text-slate-800 mb-3">
                 <span>Annual Income</span>
                 <span className="text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full text-sm">{formatCurrency(inputs.income)}</span>
               </label>
-              <input 
+              <input
                 id="income-slider"
-                type="range" min="40000" max="250000" step="1000" 
+                type="range" min="40000" max="250000" step="1000"
                 value={inputs.income}
                 onChange={(e) => handleInputChange('income', Number(e.target.value))}
-                /* Draws the custom blue fill track */
                 style={{ background: `linear-gradient(to right, #4f46e5 ${getSliderFillPct(inputs.income, 40000, 250000)}%, #e2e8f0 ${getSliderFillPct(inputs.income, 40000, 250000)}%)` }}
                 className="w-full h-2 rounded-lg appearance-none focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 cursor-pointer"
               />
@@ -413,6 +410,17 @@
               </table>
             </div>
           </div>
+
+          <details className="bg-slate-50 border border-slate-200 rounded-xl" open>
+            <summary className="cursor-pointer px-5 py-4 text-sm font-bold text-slate-800 hover:text-indigo-700 select-none">
+              Disclaimer &amp; sources
+            </summary>
+            <div className="px-5 pb-5 pt-1 text-sm text-slate-600 space-y-3">
+              <p>This tool is illustrative only. It uses a simplified combined federal+provincial marginal rate by income band, applies a constant annual return, and assumes contributions land on the same schedule each year. It does <strong>not</strong> model province-specific brackets, surtaxes, the FHSA-to-RRSP transfer mechanics, the qualifying-home rules, or what happens at the 15-year account-life limit beyond the warning banner above.</p>
+              <p>Your real FHSA room depends on what years you actually opened and contributed. Always confirm your participation room and unused carry-forward in <a href="https://www.canada.ca/en/revenue-agency/services/e-services/cra-my-account.html" target="_blank" rel="noopener" className="underline text-indigo-600">CRA My Account</a> and consult a Certified Professional Accountant before acting.</p>
+              <p className="text-xs text-slate-500">Not tax, legal, or investment advice.</p>
+            </div>
+          </details>
 
         </div>
       );
