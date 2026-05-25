@@ -775,6 +775,7 @@
   <div class="dashboard">
 
     <header class="header">
+      <a class="reset-btn no-print" href="../index.html" style="left: 0; right: auto;">← Home</a>
       <button class="reset-btn no-print" id="resetBtn" type="button">Reset to defaults</button>
       <h1>The Canadian LLP vs. Wealth Advisor</h1>
       <p>See the invisible cost of pulling money out of your RRSP to fund school — even if you pay every cent back on time, the lost years of compounding never come back.</p>
@@ -959,7 +960,9 @@
   <script>
     'use strict';
 
-    // ───── Data ─────
+    // OPS CONTEXT: Shows the lifelong opportunity cost of pulling RRSP money under the LLP — even with perfect repayment, the years out of the market never come back.
+
+    // M1 [Education Archetypes]: pre-built scenarios mapped to LLP withdrawals.
     const ARCHETYPES = [
       {
         id: 'micro',
@@ -990,6 +993,7 @@
       }
     ];
 
+    // M2 [Growth Rate Presets]: discrete annual return assumptions.
     const RATES = [
       { value: 0.05,  label: '5%',   note: 'Conservative' },
       { value: 0.065, label: '6.5%', note: 'Balanced' },
@@ -1001,11 +1005,12 @@
       { value: false, main: 'Grace OFF', sub: 'Repay immediately after school' }
     ];
 
+    // PIVOT: 2026 CRA LLP rules. 25-year horizon, 10-year repayment schedule, 5-year max grace. Changing any breaks the simulate() function and the chart phase markers.
     const HORIZON = 25;
     const REPAYMENT_YEARS = 10;
     const GRACE_YEARS = 5;
 
-    // ───── State + persistence ─────
+    // M3 [State Persistence]: load/save selections to localStorage.
     const STORAGE_KEY = 'llp_state_v1';
     const DEFAULT_STATE = {
       archetypeId: 'postgrad',
@@ -1030,7 +1035,8 @@
 
     const state = loadState();
 
-    // ───── Math (DO NOT MODIFY) ─────
+    // M4 [Math Primitives] (DO NOT MODIFY): year-by-year balance under LLP path vs. untouched.
+    // PIVOT: repaymentStart = lastSchoolYear + (graceOn ? 5 : 1). Real CRA grace = earlier of (a) 5th year after first withdrawal OR (b) 2nd year after ceasing full-time studies. Real schedules may begin sooner.
     function simulate(archetype, rate, graceOn) {
       const lastSchoolYear = Math.max(...archetype.withdrawals.map(w => w.year));
       const totalWithdrawn = archetype.withdrawals.reduce((s, w) => s + w.amount, 0);
@@ -1083,7 +1089,7 @@
       };
     }
 
-    // ───── Formatting helpers ─────
+    // M5 [Formatting Helpers]: currency, compact dollars, axis ceilings.
     const fmt = new Intl.NumberFormat('en-CA', {
       style: 'currency', currency: 'CAD', maximumFractionDigits: 0
     });
@@ -1115,7 +1121,7 @@
     }
     const $ = (id) => document.getElementById(id);
 
-    // ───── Renderers ─────
+    // M6 [Renderers]: archetype/rate/grace pickers, phase bar, table, chart, story copy.
     function renderArchetypes() {
       const grid = $('archetypeGrid');
       grid.innerHTML = '';
@@ -1208,7 +1214,7 @@
       });
     }
 
-    // ───── Storytelling ─────
+    // M6.5 [Storytelling Copy]: adaptive one-sentence summary + lifestyle-equivalent chips.
     function renderStory(result) {
       const tuitionStr = fmt.format(result.totalWithdrawn);
       const gapStr = fmt.format(result.gap);
@@ -1246,7 +1252,7 @@
       `).join('');
     }
 
-    // ───── Divergence chart (SVG) ─────
+    // M7 [Divergence Chart] (SVG): untouched vs. LLP curves with phase shading + hover tooltip.
     const CHART_W = 820;
     const CHART_H = 300;
     const CHART_M = { top: 36, right: 16, bottom: 44, left: 64 };
@@ -1412,7 +1418,7 @@
       overlay.addEventListener('touchend', clear);
     }
 
-    // ───── CSV export ─────
+    // M8 [CSV Export]:
     function handleDownloadCSV(result) {
       const phaseLabel = { school: 'School', grace: 'Grace', repayment: 'Repayment', growth: 'Growth' };
       const headers = ['Year', 'Phase', 'Untouched RRSP', 'LLP Balance', 'Annual Repayment', 'Lost to LLP'];
@@ -1434,7 +1440,7 @@
       document.body.removeChild(link);
     }
 
-    // ───── Reset ─────
+    // M9 [Reset]:
     function handleReset() {
       Object.assign(state, DEFAULT_STATE);
       try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
@@ -1442,7 +1448,7 @@
       render();
     }
 
-    // ───── Orchestrator ─────
+    // M10 [Render Orchestrator]: runs simulate() then dispatches all renderers.
     let lastResult = null;
 
     function render() {
@@ -1490,7 +1496,7 @@
       saveState();
     }
 
-    // ───── Event wiring ─────
+    // M11 [Event Wiring]: bind controls to render orchestrator.
     $('resetBtn').addEventListener('click', handleReset);
     $('csvBtn').addEventListener('click', () => { if (lastResult) handleDownloadCSV(lastResult); });
     const ageInput = $('ageInput');
@@ -1500,7 +1506,7 @@
       render();
     });
 
-    // ───── Init ─────
+    // M12 [Init]: first render on page load.
     render();
   </script>
 </body>
