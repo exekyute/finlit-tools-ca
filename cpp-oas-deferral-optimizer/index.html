@@ -55,12 +55,11 @@
   <div id="root"></div>
 
   <script type="text/babel" data-presets="react,typescript">
+    // OPS CONTEXT: Helps Canadians decide what age to start CPP and OAS by projecting lifetime payout under different start ages.
     const { useState, useMemo, useEffect } = React;
 
-    // =====================================================================
-    // SECTION 1: THE MATH ENGINE
-    // =====================================================================
-    
+    // M1 [Math Primitives]: pension multipliers + lifetime totals.
+    // PIVOT: 0.6%/month early-CPP penalty, 0.7%/month late-CPP bonus, 0.6%/month late-OAS bonus. Changing any of these breaks every output.
     function calculatePensions(inputs) {
       let cppMultiplier = 1.0;
       if (inputs.cppAge < 65) {
@@ -111,26 +110,25 @@
       };
     }
 
-    // =====================================================================
-    // SECTION 2: THE USER INTERFACE (UI)
-    // =====================================================================
+    // M2 [UI Component]: state, derived projection, formatters, render.
     function PensionCalculator() {
-      // Versioning protects against local storage crashes when features are updated
+      // PIVOT: bumping APP_VERSION invalidates everyone's saved inputs — only bump when the shape of `inputs` changes.
       const APP_VERSION = "1.1";
 
-      const defaultInputs = { 
+      const defaultInputs = {
         version: APP_VERSION,
-        baseCpp: 800,       
-        baseOas: 713,       
-        cppAge: 65,         
-        oasAge: 65,         
-        lifeExpectancy: 85  
+        baseCpp: 800,
+        baseOas: 713,
+        cppAge: 65,
+        oasAge: 65,
+        lifeExpectancy: 85
       };
 
+      // M3 [State Persistence]: load saved inputs if version matches, else fall back to defaults.
       const [inputs, setInputs] = useState(() => {
         const savedData = localStorage.getItem('pension_user_inputs');
         if (savedData) {
-          try { 
+          try {
             const parsed = JSON.parse(savedData);
             if (parsed.version === APP_VERSION) return parsed;
           } catch (e) { console.error("Could not load saved data"); }
@@ -183,12 +181,18 @@
         <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-10 text-slate-800">
           
           <div className="text-center space-y-3 relative">
+            <a
+              href="../index.html"
+              className="no-print absolute top-0 left-0 mt-2 ml-2 text-sm text-slate-500 hover:text-indigo-600 transition-colors font-medium underline underline-offset-4"
+            >
+              ← Home
+            </a>
             <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">CPP & OAS Deferral Optimizer</h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               Map your lifetime pension strategy. Customize your base estimates, set your timeline, and see the exact impact of deferral.
             </p>
-            
-            <button 
+
+            <button
               onClick={handleReset}
               className="no-print absolute top-0 right-0 mt-2 mr-2 text-sm text-slate-500 hover:text-indigo-600 transition-colors font-medium underline underline-offset-4"
             >
@@ -357,6 +361,17 @@
               </table>
             </div>
           </div>
+
+          <details className="bg-slate-50 border border-slate-200 rounded-xl group" open>
+            <summary className="cursor-pointer px-5 py-4 text-sm font-bold text-slate-800 hover:text-indigo-700 select-none">
+              Disclaimer &amp; sources
+            </summary>
+            <div className="px-5 pb-5 pt-1 text-sm text-slate-600 space-y-3">
+              <p>This tool is illustrative only. It uses the published CPP/OAS adjustment rates (0.6%/month early-CPP penalty, 0.7%/month late-CPP bonus, 0.6%/month late-OAS bonus) applied to your own base estimates. It does <strong>not</strong> model future inflation, time-value-of-money discounting, OAS recovery tax (clawback) at higher incomes, marital or survivor benefits, post-65 contributions, or partial-residency adjustments to OAS.</p>
+              <p>Your real entitlement depends on your full contribution and residency history. Verify your personal numbers in <a href="https://www.canada.ca/en/employment-social-development/services/my-account.html" target="_blank" rel="noopener" className="underline text-indigo-600">My Service Canada Account</a> and consult a qualified financial advisor before making a deferral decision.</p>
+              <p className="text-xs text-slate-500">Not tax, legal, or investment advice.</p>
+            </div>
+          </details>
 
         </div>
       );
