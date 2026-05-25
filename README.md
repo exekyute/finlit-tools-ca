@@ -1,44 +1,77 @@
-# 🏡 First Home Savings Account (FHSA) Calculator
+# Finlit Tools — Canada
 
-**🔗 [Click here to use the Live Tool!](https://exekyute.github.io/fhsa-calc/)**
+> Seven self-contained, browser-based calculators for Canadian benefit and tax rules.
 
-This tool helps you map out your path to homeownership.
+## The tools
 
-Because dealing with taxes, contribution limits, and government rules can be intimidating, this humble tool does some of the work for you right in your browser.
+| Tool | What it shows |
+|---|---|
+| [Benefit Clawback Radar](./benefit-clawback-radar/) | EMTR cliffs from CCB and GIS phase-outs, plus an RRSP escape hatch |
+| [CPP & OAS Deferral Optimizer](./cpp-oas-deferral-optimizer/) | Lifetime payout vs. start age |
+| [FHSA Optimization Engine](./fhsa-calculator/) | Tax-free home savings growth |
+| [HBP Repayment Engine](./hbp-repayment-engine/) | 15-year cost of skipping HBP repayments |
+| [LLP vs. Wealth Advisor](./llp-vs-wealth-advisor/) | Opportunity cost of withdrawing from RRSP for school |
+| [RESP + CESG Optimizer](./resp-cesg-optimizer/) | Capturing the full $7,200 CESG grant |
+| [TFSA Snowballer](./tfsa-snowballer/) | Tax-free vs. taxable account drift over time |
 
-## ✨ What does it do?
-You just move a few sliders (like your income and how much you want to save), and the calculator will automatically show you:
+Each tool links from the hub at the repo root (`index.html`) and back to it via a **← Home** button.
 
-* **Your Total Down Payment:** How much cash you will actually have to buy a house.
-* **Your Tax Savings:** An estimate of how much money you'll get back at tax time.
-* **The "Whose Money Is It?" Bar:** A colorful visual showing how much of the final total is your own cash, how much is government tax refunds, and how much is pure investment growth.
+## How to run
 
-## 🛠️ Features (Why it's cool)
-* **Auto-Saves:** If you accidentally close the tab, don't panic. It remembers your numbers for the next time you visit.
-* **Download to Excel:** Want to keep a copy of your plan? Hit the **Export CSV** button to download your year-by-year schedule.
-* **Printer-Friendly:** If you hit `Ctrl+P` (or `Cmd+P` on Mac) to print a copy, the tool automatically hides all the buttons and sliders to give you a clean, professional paper report.
-* **Built-In Rulebook:** It won't let you break the rules. It automatically stops your contributions if you hit the government's $40,000 lifetime limit, and it warns you about the strict 15-year account expiry rule.
-* **Reinvest Toggle:** A handy switch to see what happens if you take your tax refund every spring and immediately dump it back into your savings.
+- **Locally:** open `index.html` at the repo root in any modern browser. Each tool also runs by double-clicking its own `index.html`.
+- **Hosted:** push to GitHub and enable Pages (Settings → Pages → Deploy from branch → `main` / root). The relative links work in both modes.
 
-## 🚀 How to run it
-You can try it out instantly by clicking the live web link at the top of this page!
+## Why I built these (self-learning objectives)
 
-Alternatively, if you want to run it offline on your computer:
-1. Simply download the `index.html` file from this repository.
-2. Double-click it.
-3. It will open securely in your favorite web browser (Chrome, Safari, Edge, etc.) and work instantly without needing any internet connection.
+I built these to refresh hands-on coding fundamentals while practicing the harder skill: explaining dense Canadian tax-and-benefit rules in plain language, with the rules themselves as the constraint that forces clarity.
 
-## 🇨🇦 The Canadian Rules it Follows
-This calculator is strictly coded to follow the official guardrails of the Canadian FHSA:
-* **Annual Limit:** Maximum $8,000 per year.
-* **Lifetime Limit:** Maximum $40,000 total out-of-pocket.
-* **Carry-Forward:** Unused room rolls over, but is capped at a max of $8,000 carried over per year.
-* **Maturity:** The account can only stay open for 15 years before you must use it or transfer it.
-* **Tax Rates:** It uses a built-in cheat sheet to estimate your marginal tax bracket based on the income you enter.
+Three things I wanted to get better at, in order:
 
-## 💻 Tech Details (For the curious)
-* **React:** Makes all the sliders fast and interactive.
-* **Tailwind CSS:** Makes it look pretty and work great on mobile phones.
-* **Babel:** Translates the code directly in your browser so you don't need a build server. 
+1. **Refresh the basics**: Vanilla JS, React-via-CDN, single-file architecture, no build step. Forcing each tool to live in one HTML file removed every excuse to over-engineer.
+2. **Explain rules without hand-waving**: If I can't translate a CCB phase-out tier or a CESG eligibility window into a working calculator, I don't actually understand it.
+3. **Make the invisible visible**: Most Canadian benefit math is technically public but practically opaque (paystubs don't show clawbacks, CRA recalculates months later). A visual tool is the bridge.
 
-*Disclaimer: This is a planning tool, not financial advice. Marginal tax rates are estimates based on simplified Federal + average Provincial brackets. Always talk to a certified accountant or financial advisor before making big money moves.*
+## Code conventions
+
+Each tool uses a Concise Operational Flow annotation style so the code reads like a workflow:
+
+- `// OPS CONTEXT:` at the top of the script — one-line summary of the tool's real-world purpose.
+- `// M1 [Name]:`, `// M2 [Name]:` … inline above each meaningful code block.
+- `// PIVOT:` above any code where changing a CRA rule, bracket table, or phase-out threshold would break or alter the logic.
+
+Math primitives are pure and isolated. The composition layers (RRSP-aware wrappers, strategy builders) feed adjusted inputs into the primitives without modifying them.
+
+## Repo layout
+
+```
+finlit-tools-ca-main/
+├── index.html                       # Hub page
+├── README.md                        # This file
+├── benefit-clawback-radar/
+│   ├── index.html
+│   └── README.md
+├── cpp-oas-deferral-optimizer/
+│   ├── index.html
+│   └── README.md
+├── fhsa-calculator/
+│   ├── index.html
+│   └── README.md
+├── hbp-repayment-engine/
+│   ├── index.html
+│   └── README.md
+├── llp-vs-wealth-advisor/
+│   ├── index.html
+│   └── README.md
+├── resp-cesg-optimizer/
+│   ├── index.html
+│   └── README.md
+└── tfsa-snowballer/
+    ├── index.html
+    └── README.md
+```
+
+## Disclaimer
+
+These tools are illustrative only. They use 2026-indexed estimates of federal and provincial rules and simplify many real-world variables. Each tool's own README and in-app footer document what it does and does not model.
+
+Verify your personal numbers in **CRA My Account** or **My Service Canada Account** and consult a Certified Professional Accountant or qualified financial advisor before acting. Not tax, legal, or investment advice.
