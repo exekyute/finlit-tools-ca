@@ -5,57 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RESP + CESG Optimizer</title>
 
-  <!-- External libraries pulled in via CDN so this file works by just double-clicking it. -->
-  <!-- Tailwind gives us the utility classes (text-indigo-600, rounded-2xl, etc.) -->
-  <!-- TODO: pre-compile Tailwind locally once the tool family stabilizes -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- React + ReactDOM are the framework that drives the UI -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <!-- Babel translates our JSX (the HTML-looking React code below) into plain JS in the browser -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Chart.js renders the "Balance Growth Over Time" line chart. Same CDN-only pattern as everything else. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 
-  <!-- Google Fonts: Inter is a clean modern sans-serif we use everywhere -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
-    /* =====================================================================
-       SHARED STYLES — copy this <style> block into any new tool in the family.
-       Duplicated by design so each HTML file is a self-contained download.
-       When you change one, change all of them.
-       ===================================================================== */
-
-    /* ---------- TYPOGRAPHY ----------
-       The Inter font is loaded via the <link> tag above. Apply it globally. */
     body { font-family: 'Inter', sans-serif; }
 
-    /* ---------- CUSTOM SLIDER STYLING ----------
-       Browsers ship with ugly default sliders. We strip them and draw our own
-       so the controls feel polished and match the indigo accent colour. */
-
-    /* Step 1: wipe the browser's default look so we can paint our own track */
     input[type=range] {
       -webkit-appearance: none;
       appearance: none;
       background: transparent;
     }
 
-    /* Step 2: style the draggable "thumb" (the circle you grab) in Chrome / Safari / Edge */
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
       width: 20px;
       height: 20px;
-      border-radius: 50%;            /* perfect circle */
-      background: #4f46e5;            /* Indigo-600 — the app accent colour */
+      border-radius: 50%;
+      background: #4f46e5;
       cursor: pointer;
-      border: 3px solid white;        /* white ring separates thumb from track */
-      box-shadow: 0 1px 4px rgba(0,0,0,0.4); /* soft drop-shadow makes it feel raised */
+      border: 3px solid white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
     }
 
-    /* Step 3: same thumb styling for Firefox (uses a different selector) */
     input[type=range]::-moz-range-thumb {
       width: 20px;
       height: 20px;
@@ -66,10 +44,6 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.4);
     }
 
-    /* ---------- PRINT MODE ----------
-       When the user hits Ctrl+P, hide interactive controls (anything tagged
-       .no-print) and clean up shadows so the printout looks like a tidy paper
-       report instead of a web page. */
     @media print {
       body { background-color: white !important; }
       .no-print { display: none !important; }
@@ -78,22 +52,13 @@
   </style>
 </head>
 <body class="bg-[#f8fafc] min-h-screen py-10">
-  <!-- React mounts the entire app into this single empty div -->
   <div id="root"></div>
 
   <script type="text/babel" data-presets="react,typescript">
-    // Pull the React hooks we need into local names so we can use them without the React. prefix
+    // OPS CONTEXT: Projects a Canadian RESP year by year — contributions, CESG grant, growth — toward a 4-year tuition target.
     const { useState, useMemo, useEffect, useRef } = React;
 
-    // =====================================================================
-    // SHARED HELPERS — copy these into any new tool in the family.
-    // =====================================================================
-    // formatCurrency, getSliderFillPct, downloadCSV, loadInputsFromStorage
-    // are duplicated by design across every tool so each HTML file works
-    // as a standalone download. When you change one, change all.
-
-    // Format any number as Canadian dollars with no decimal places.
-    // Example: 12345.67  →  "$12,346"
+    // M1 [Shared Helpers]: currency formatting, slider fill %, CSV download, defaults-merge load.
     const formatCurrency = (val) =>
       new Intl.NumberFormat('en-CA', {
         style: 'currency',
@@ -101,15 +66,9 @@
         maximumFractionDigits: 0
       }).format(val);
 
-    // Figure out what percentage of a slider track is "filled" given the
-    // current value and the slider's bounds. Used to paint the indigo fill
-    // on the slider track to the LEFT of the thumb.
     const getSliderFillPct = (value, min, max) =>
       ((value - min) / (max - min)) * 100;
 
-    // Build a CSV file in-memory from header + row arrays and trigger a
-    // browser download. No server involved — we use a data: URL plus a
-    // temporary <a> tag that we click and then remove.
     const downloadCSV = (headers, rows, filename) => {
       const csvContent = "data:text/csv;charset=utf-8," +
         [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
@@ -123,10 +82,7 @@
       document.body.removeChild(link);
     };
 
-    // Load saved slider values from localStorage with defensive merging
-    // against the defaults object. If a future version of the tool adds a
-    // new input field, old saved blobs keep working — the missing key falls
-    // back to its default value instead of becoming undefined.
+    // Defaults-merge keeps old saves forward-compatible: missing keys fall back to default.
     const loadInputsFromStorage = (key, defaults) => {
       try {
         const saved = localStorage.getItem(key);
@@ -139,33 +95,21 @@
       }
     };
 
-    // =====================================================================
-    // PART 1: THE MATH BRAIN
-    // =====================================================================
-    // This section contains all the RESP + CESG rules and the year-by-year
-    // projection logic. No UI here — just numbers in, numbers out.
+    // M2 [Constants & Rules]: CRA RESP/CESG limits.
+    // PIVOT: Federal RESP/CESG caps. Changing any value invalidates the lifetime room math and the bar breakdown downstream.
+    const LIFETIME_CONTRIB_CAP = 50000;    // max contributions per beneficiary, ever
+    const ANNUAL_CESG_ROOM     = 500;      // grant room earned each eligible year
+    const MAX_CESG_PER_YEAR    = 1000;     // hard ceiling on grant claimed in any single year (catch-up cap)
+    const LIFETIME_CESG_CAP    = 7200;     // grant ceiling per beneficiary, ever
+    const CESG_MATCH_RATE      = 0.20;     // 20% government match on contributions
+    const CESG_LAST_AGE        = 17;       // CESG eligibility ends Dec 31 of the year the child turns 17
 
-    // ---- CANADIAN RESP / CESG RULES (the "law of the land" for this calculator) ----
-    const LIFETIME_CONTRIB_CAP = 50000;    // Max you can ever put in per kid (RESP rule)
-    const ANNUAL_CESG_ROOM     = 500;      // Free grant earned by each year of CESG eligibility
-    const MAX_CESG_PER_YEAR    = 1000;     // Hard ceiling on grant you can claim in any single year (catch-up cap)
-    const LIFETIME_CESG_CAP    = 7200;     // Free grant ceiling per kid, ever (CRA rule)
-    const CESG_MATCH_RATE      = 0.20;     // Government matches 20% of every dollar you contribute
-    const CESG_LAST_AGE        = 17;       // CESG eligibility ends Dec 31 of the year your child turns 17
-
-    // ---- 16-17 ELIGIBILITY RULE (CRA) ----
-    // To receive CESG at ages 16 or 17, the beneficiary must satisfy ONE of:
-    //   (a) at least $2,000 was contributed to a RESP before the year they turned 16, OR
-    //   (b) at least $100 was contributed in any 4 years before the year they turned 16.
-    // We can only check this against contributions made INSIDE the simulation —
-    // any real-world prior contributions aren't modeled here.
+    // PIVOT: Age 16-17 grant eligibility — either $2,000 total before age 16, OR $100+ in any 4 prior years. Only contributions inside the simulation are checked; real prior contributions aren't modelled.
     const RULE_1617_MIN_PRIOR_TOTAL   = 2000;
     const RULE_1617_MIN_PRIOR_YEARS   = 4;
     const RULE_1617_MIN_PER_YEAR      = 100;
 
-    // ---- THE PROJECTION ENGINE ----
-    // Takes the user's slider values and returns a year-by-year schedule
-    // plus summary totals (ending balance, total grant, etc.).
+    // M3 [Schedule Builder]: per-year contributions, CESG grant, growth, ending balance.
     function calculateRESPSchedule(inputs) {
       // Clamp child's age into the valid range so weird inputs don't crash the loop
       const startAge = Math.max(0, Math.min(CESG_LAST_AGE, inputs.childAge));
@@ -291,15 +235,7 @@
       };
     }
 
-    // =====================================================================
-    // PART 2: THE VISUAL APP
-    // =====================================================================
-    // The React component that renders the entire page. It owns the slider
-    // state, calls the math brain whenever inputs change, and renders the
-    // result as the cards, bar, chart, and table you see on screen.
-
-    // Centralized slider bounds — the JSX below reads min/max/step from here
-    // so the magic numbers live in one place instead of being scattered through markup.
+    // M4 [Slider Bounds]: centralised so JSX reads min/max/step from one place.
     const SLIDER_BOUNDS = {
       childAge:            { min: 0,     max: CESG_LAST_AGE, step: 1     },
       annualContribution:  { min: 0,     max: 5000,          step: 250   },
@@ -310,15 +246,7 @@
     // the "Years of CESG Remaining" progress bar to compute its fill percentage.
     const MAX_ELIGIBLE_YEARS = CESG_LAST_AGE + 1;
 
-    // =====================================================================
-    // BalanceChart — line chart of the RESP balance over time
-    // =====================================================================
-    // Reads projection.schedule and renders three stacked area datasets
-    // (your cash, CESG grant, market growth via the total line) using Chart.js.
-    // The TOP of the stack equals endingBalance, so the silhouette traces the
-    // actual balance curve while the colour bands show source decomposition.
-    // Colours match the "Whose Money Is It?" composition bar for visual consistency.
-
+    // M5 [Balance Chart]: stacked area chart — cumulative contributions, +CESG, +growth.
     function BalanceChart({ projection }) {
       const canvasRef = useRef(null);   // points to the <canvas> DOM element
       const chartRef  = useRef(null);   // holds the Chart.js instance so we can destroy/replace it
@@ -443,25 +371,20 @@
       );
     }
 
+    // M6 [UI Component]: state, derived projection, formatters, render.
     function RESPCalculator() {
-
-      // ---- STATE: the values driving the sliders ----
-      // These are the "starting point" if the user has never visited before, or hits Reset.
       const defaultInputs = {
         childAge:           5,
         annualContribution: 2500,
         returnRate:         0.06,
-        tuitionGoal:        80000   // ~current Canadian in-province undergrad 4-yr total
+        tuitionGoal:        80000
       };
 
-      // loadInputsFromStorage is defined above and does a defensive default-merge —
-      // any field added in a future version falls back to its default instead of
-      // becoming undefined on old saved blobs.
+      // M7 [State Persistence]: defaults-merge keeps old saves forward-compatible.
       const [inputs, setInputs] = useState(() =>
         loadInputsFromStorage('resp_user_inputs_v1', defaultInputs)
       );
 
-      // Whenever the inputs change, save them back to localStorage so a refresh doesn't wipe progress.
       useEffect(() => {
         localStorage.setItem('resp_user_inputs_v1', JSON.stringify(inputs));
       }, [inputs]);
@@ -518,8 +441,13 @@
       return (
         <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-10 text-slate-800">
 
-          {/* HEADER: page title, one-line description, and the small "Reset Defaults" link in the top-right corner */}
           <div className="text-center space-y-3 relative">
+            <a
+              href="../index.html"
+              className="no-print absolute top-0 left-0 mt-2 ml-2 text-sm text-slate-500 hover:text-indigo-600 transition-colors font-medium underline underline-offset-4"
+            >
+              ← Home
+            </a>
             <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">RESP + CESG Optimizer</h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               Plan your child's Registered Education Savings Plan. Capture the full $7,200 in free government grants and map their path to post-secondary.
@@ -812,24 +740,22 @@
             </div>
           </div>
 
-          {/* DISCLAIMER: small grey text at the very bottom listing what the tool does NOT model */}
-          <p className="text-xs text-slate-500 text-center max-w-3xl mx-auto leading-relaxed">
-            Standard CESG only. Does not model Additional CESG (the income-based bonus for lower-income families), the Canada Learning Bond, or provincial grants like QESI (Quebec) or BCTESG (British Columbia). The 16–17 eligibility check uses only contributions made inside this simulation — real-world contributions made before today are not accounted for. This is a planning tool, not financial advice — talk to a certified financial advisor before making big money moves.
-          </p>
+          <details className="bg-slate-50 border border-slate-200 rounded-xl" open>
+            <summary className="cursor-pointer px-5 py-4 text-sm font-bold text-slate-800 hover:text-indigo-700 select-none">
+              Disclaimer &amp; sources
+            </summary>
+            <div className="px-5 pb-5 pt-1 text-sm text-slate-600 space-y-3">
+              <p>This tool is illustrative only. It models the standard CESG match (20%, up to $500/year, $7,200 lifetime) and the 16–17 eligibility rule using <strong>only the contributions made inside this simulation</strong>. Real-world prior contributions, joint-RESP family-plan splits, withdrawal mechanics (EAPs), and over-contribution penalties are not modelled.</p>
+              <p>It does <strong>not</strong> include Additional CESG for lower-income families, the Canada Learning Bond, or provincial grants like QESI (Quebec) or BCTESG (British Columbia). Verify your beneficiary's grant and contribution history in <a href="https://www.canada.ca/en/revenue-agency/services/e-services/cra-my-account.html" target="_blank" rel="noopener" className="underline text-indigo-600">CRA My Account</a> and consult a qualified financial advisor before acting.</p>
+              <p className="text-xs text-slate-500">Not tax, legal, or investment advice.</p>
+            </div>
+          </details>
 
         </div>
       );
     }
 
-    // =====================================================================
-    // INLINE TEST SUITE — runs on every page load, logs to browser console
-    // =====================================================================
-    // Self-running smoke tests for the math brain. Open DevTools (F12) and
-    // look at the Console tab to see results. Six cases cover the default
-    // scenario plus the corner cases most likely to break if a future
-    // iteration accidentally touches calculateRESPSchedule, PLUS a sanity
-    // check that the chart's cumulative arrays line up with the existing totals.
-
+    // M8 [DevTools Test Suite]: self-running smoke tests on page load — open DevTools console to see results.
     function runMathTests() {
       const within = (actual, expected, tolerance) =>
         Math.abs(actual - expected) < (tolerance == null ? 0.01 : tolerance);
